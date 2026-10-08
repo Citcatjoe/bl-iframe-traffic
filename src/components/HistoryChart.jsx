@@ -3,7 +3,9 @@ import { DIRECTIONS, hhmm } from "../format.js";
 
 const COLORS = { "N-S": "#b91c1c", "S-N": "#1d4ed8" };
 const H = 170;
-const PAD = { l: 30, r: 8, t: 10, b: 22 };
+const PAD = { l: 30, r: 20, t: 10, b: 22 };
+// Nord → Sud dessiné en premier et plus épais : reste visible quand les deux sens ont la même valeur.
+const STROKE = { "N-S": 4, "S-N": 2 };
 const GAP_MS = 10 * 60_000; // au-delà : relevés manquants (serveur arrêté), on coupe la ligne
 
 /** Longueur de bouchon (km) par sens, en escalier : un état constant entre deux relevés. */
@@ -65,7 +67,7 @@ export default function HistoryChart({ series, hours }) {
               </text>
             ))}
             {Object.keys(COLORS).map((dir) => (
-              <path key={dir} d={path(dir)} fill="none" stroke={COLORS[dir]} strokeWidth="2" strokeLinejoin="round" />
+              <path key={dir} d={path(dir)} fill="none" stroke={COLORS[dir]} strokeWidth={STROKE[dir]} strokeLinejoin="round" />
             ))}
           </svg>
         )
