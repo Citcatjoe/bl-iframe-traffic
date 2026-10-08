@@ -11,8 +11,10 @@ Compte rendu des données réelles : [ETAPE0.md](ETAPE0.md).
 3. L'abonner à **« Road traffic – traffic situations »**
 4. Copier le **token** de l'application (pas le « token hash »)
 
-Limites du plan : 5 appels/min et un quota total de 260 000 appels (un relevé toutes les 3 min ≈ 480/jour).
-Si le quota est épuisé : verkehrsdaten-plattform@astra.admin.ch. Conditions : [FEDRO Terms of Use](https://opentransportdata.swiss/tac-fedro/).
+Limites du plan : 5 appels/min ; accès valable **6 mois** avec 260 000 appels sur la période (≈ 1 appel/min).
+Un relevé toutes les 3 min ≈ 87 000 appels en 6 mois. Pour prolonger l'accès ou réinitialiser le quota :
+verkehrsdaten-plattform@astra.admin.ch ([conditions](https://opentransportdata.swiss/en/road-traffic/),
+[FEDRO Terms of Use](https://opentransportdata.swiss/tac-fedro/)).
 
 ## 2. `.env` (chiffré avec git-crypt)
 
