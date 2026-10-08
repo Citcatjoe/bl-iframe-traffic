@@ -1,0 +1,6 @@
+node_modules/
+dist/
+data/
+scratch/
+.DS_Store
+# .env n'est PAS ignoré : il est chiffré par git-crypt (voir .gitattributes et README).
