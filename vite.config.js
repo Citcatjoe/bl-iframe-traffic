@@ -7,4 +7,6 @@ export default defineConfig({
   server: {
     proxy: { "/api": `http://localhost:${process.env.PORT || 8787}` },
   },
+  // MapLibre (≈ 1 Mo) est chargé à part, en import dynamique (comme bl-iframe-map-ski).
+  build: { chunkSizeWarningLimit: 2000 },
 });
