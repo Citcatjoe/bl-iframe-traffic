@@ -34,6 +34,7 @@ let latestCounters = store.latestCounters();
 
 const poller = startPoller({
   apiKey: process.env.OTD_API_KEY,
+  countersApiKey: process.env.OTD_COUNTERS_API_KEY || process.env.OTD_API_KEY,
   store,
   intervalMs: INTERVAL_MIN * 60_000,
   onSituations: async (snapshot) => {

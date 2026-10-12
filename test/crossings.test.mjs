@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseTrafficXml } from "../lib/datex.mjs";
 import { parseMeasuredDataXml } from "../lib/counters.mjs";
-import { CROSSING_BY_ID, counterReading, crossingRefs, summarizeCrossing } from "../lib/crossings.mjs";
+import { COUNTER_DETECTORS, CROSSING_BY_ID, counterReading, crossingRefs, summarizeCrossing } from "../lib/crossings.mjs";
 
 const xml = readFileSync(new URL("./fixtures/sample.xml", import.meta.url), "utf8");
 const { situations } = parseTrafficXml(xml);
@@ -77,4 +77,13 @@ test("mesures compteurs : débits additionnés, vitesse pondérée par le débit
   assert.equal(r.flow_heavy, 60);
   assert.equal(r.speed_light, Math.round((1200 * 76.5 + 840 * 66.9000015) / 2040));
   assert.equal(counterReading(["CH:9999.01"], detectors), null);
+});
+
+test("réponse réelle des compteurs (12.10.2026) : tous les détecteurs, valeurs en erreur écartées", () => {
+  const { detectors } = parseMeasuredDataXml(readFileSync(new URL("./fixtures/measured-data-live.xml", import.meta.url), "utf8"));
+  assert.deepEqual(COUNTER_DETECTORS.filter((id) => !detectors[id]), []);
+  // Gondo vers le nord : vitesses marquées dataError (SENSOR_WWD), débits conservés
+  assert.deepEqual(detectors["CH:0527.02"], { measured_at: "2026-10-12T08:31:00.000Z", flow_light: 60, speed_light: null, flow_heavy: 60, speed_heavy: null });
+  const tunnel = counterReading(CROSSING_BY_ID.gothard.counters[0].S, detectors);
+  assert.deepEqual(tunnel, { measured_at: "2026-10-12T08:31:00.000Z", flow_light: 840, flow_heavy: 0, speed_light: 72 });
 });

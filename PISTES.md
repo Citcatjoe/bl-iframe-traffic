@@ -136,8 +136,10 @@ de vacances, sans suivre tout le réseau. Intégration en iframe sur le site mé
   (H21/A21) ([OFT, rapport semestriel 2025](https://www.bav.admin.ch/dam/it/sd-web/UUtF2-g4E5q3/2-semesterbericht-2025-aqgv.pdf)).
 - **Concept : vue d'ensemble + fiche.** La liste triée par gravité, et `?point=<id>` pour la fiche d'une traversée
   à glisser dans un article.
-- **Compteurs : oui.** Intégrés au code ; au 12.10.2026, l'appel renvoie HTTP 403 « Access to this API has been
-  disallowed » : le produit « Road traffic – traffic counters » doit encore être ajouté à l'application.
+- **Compteurs : oui.** Accès actif depuis le 12.10.2026 (nouveau token, rangé dans `OTD_COUNTERS_API_KEY`) :
+  premier appel réel, 27 détecteurs demandés, 27 reçus, ≈ 58 Ko en 0,3 s. Constaté en direct : des valeurs
+  marquées `dataError` (SENSOR_WWD à Gondo, circulation à contresens détectée) → écartées ; une mesure porte sur
+  une seule minute (60 véh./h = 1 véhicule), donc la vitesse est souvent absente la nuit ou sur les cols.
 
 ### Périmètre de chaque traversée (`lib/crossings.mjs`)
 

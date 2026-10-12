@@ -10,8 +10,10 @@ Compte rendu des données réelles : [ETAPE0.md](ETAPE0.md). Pistes et choix de 
 1. Créer un compte sur https://api-manager.opentransportdata.swiss
 2. Créer une application (« Redirect URLs » : laisser vide, ou `http://localhost:5173` si le champ est obligatoire)
 3. L'abonner à **« Road traffic – traffic situations »** et **« Road traffic – traffic counters »**
-   (sans le second, le widget fonctionne sans les mesures de vitesse et de débit ; le serveur journalise `AUTH`).
-4. Copier le **token** de l'application (pas le « token hash »)
+   (une seule application pour les deux, ou une application par produit). Sans les compteurs, le widget
+   fonctionne sans les mesures de vitesse et de débit ; le serveur journalise `AUTH`.
+4. Copier le **token** de l'application (pas le « token hash ») : `OTD_API_KEY` pour les messages,
+   `OTD_COUNTERS_API_KEY` pour les compteurs si c'est une autre application (sinon laisser vide).
 
 Limites (page produit « traffic situations ») : 5 appels/min ; accès valable **6 mois** avec 260 000 appels sur la
 période (≈ 1 appel/min). Un relevé toutes les 3 min ≈ 87 000 appels en 6 mois par API interrogée. Pour prolonger l'accès ou réinitialiser le quota :

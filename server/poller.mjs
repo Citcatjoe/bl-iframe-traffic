@@ -57,10 +57,11 @@ function startJob({ kind, apiKey, store, intervalMs, run, complete, describe, on
 }
 
 /**
- * @param {{ apiKey, store, intervalMs, timeoutMs?, onSituations?, onCounters?, log? }} opts
+ * @param {{ apiKey, countersApiKey?, store, intervalMs, timeoutMs?, onSituations?, onCounters?, log? }} opts
+ *   countersApiKey : token d'une application abonnée à « traffic counters » (défaut : apiKey)
  * @returns {{ state: { situations, counters }, stop(): void }}
  */
-export function startPoller({ apiKey, store, intervalMs, timeoutMs = 60_000, onSituations, onCounters, log = console }) {
+export function startPoller({ apiKey, countersApiKey = apiKey, store, intervalMs, timeoutMs = 60_000, onSituations, onCounters, log = console }) {
   const situations = startJob({
     kind: "situations",
     apiKey,
@@ -74,11 +75,11 @@ export function startPoller({ apiKey, store, intervalMs, timeoutMs = 60_000, onS
   });
   const counters = startJob({
     kind: "counters",
-    apiKey,
+    apiKey: countersApiKey,
     store,
     intervalMs,
     log,
-    run: async (at) => ({ fetched_at: at, ...parseMeasuredDataXml(await fetchMeasuredDataXml({ apiKey, detectorIds: COUNTER_DETECTORS })) }),
+    run: async (at) => ({ fetched_at: at, ...parseMeasuredDataXml(await fetchMeasuredDataXml({ apiKey: countersApiKey, detectorIds: COUNTER_DETECTORS })) }),
     complete: (id, measured) => store.completeCountersPoll(id, measured),
     describe: (measured) => `${Object.keys(measured.detectors).length}/${COUNTER_DETECTORS.length} détecteurs`,
     onResult: onCounters,
