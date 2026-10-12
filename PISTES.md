@@ -196,3 +196,19 @@ Choix provisoires, à valider (contenu du panneau encore ouvert) :
   compteurs), col du Gothard, messages en cours, prochaines fermetures, historique 12 h.
 - **Mobile** : liste compacte des 4 traversées sous la carte ; au clic, fiche courte (état par sens) et bouton « Détails ».
 - Les vitesses sont des mesures d'une minute : à lisser (moyenne sur 5 min) avant d'en tirer une couleur.
+
+### Tracés disponibles pour d'autres points (vérifié le 12.10.2026)
+
+Couche publique ASTRA `BS_AXIS` (ArcGIS Online, sans clé), celle utilisée par `npm run geo` :
+
+| Couche | Contenu | Volume |
+|---|---|---|
+| 3 `AXIS_SEG_MAINAXE_NS` | axes principaux de **toutes les routes nationales** (N1 à N29, dont N1GUB Gubrist, N2BEL Belchen) | 29 axes, 166 segments |
+| 0 / 5 | axes de raccordement (jonctions) et rampes | 598 / 2 290 segments |
+| 13 `AXIS_KILOM_NS` | bornes kilométriques des routes nationales (points) | 4 680 |
+| 2 `AXIS_SEG_KS` | routes cantonales (axes d'entretien), 26 cantons | 8 444 segments |
+
+- Passages frontière et goulets du Plateau sont sur des routes nationales : tracés disponibles comme pour les cols.
+- Routes cantonales : couverture inégale selon les cantons (ex. H21 et H3 présents ; H2 du Gothard côté UR et H6
+  du Grimsel côté BE non trouvés sous ces noms). Pour les cols, prévoir un repli (swisstopo swissTLM3D ou OpenStreetMap).
+- Les bornes kilométriques permettraient de placer les messages qui citent un kilomètre (« bei Kilometer 11.43 »).
