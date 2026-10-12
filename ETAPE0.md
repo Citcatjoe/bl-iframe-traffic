@@ -1,6 +1,6 @@
 # Étape 0 : ce que contient vraiment le flux (relevés du 08.10.2026, 15:44 – 16:00)
 
-Dump brut : `npm run gothard -- --dump data/raw.xml` (≈ 13 Mo non compressé). Extraits réels dans `test/fixtures/sample.xml`.
+Dump brut : `npm run traversees -- --dump data/raw.xml` (≈ 13 Mo non compressé). Extraits réels dans `test/fixtures/sample.xml`.
 
 ## Volume et structure
 

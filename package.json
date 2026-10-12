@@ -12,8 +12,8 @@
     "dev:web": "vite",
     "build": "vite build",
     "start": "node --disable-warning=ExperimentalWarning server/index.mjs",
-    "gothard": "node --env-file-if-exists=.env scripts/gothard.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "traversees": "node --env-file-if-exists=.env scripts/traversees.mjs"
   },
   "dependencies": {
     "express": "^5.2.1",

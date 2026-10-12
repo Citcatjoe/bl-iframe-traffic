@@ -86,10 +86,11 @@ actuelle ne le couvre pas.
   - CH:0529 (46.69, 8.60), CH:0582 (46.64, 8.60), CH:0627 (46.52, 8.56)
 - **Détecteurs :** chaque poste a des détecteurs `.01` / `.02` (parfois `.03` / `.04`), avec le sens en alertC
   (`negative` / `positive`).
-- *[hypothèse]* Placement sur l'A2 d'après les coordonnées : CH:0195 (vers Amsteg), CH:0528 (vers Gurtnellen),
-  CH:0150 et CH:0529 (vers Göschenen), CH:0293 (vers Airolo / Quinto). La liste ne donne pas les noms et les
-  coordonnées sont arrondies à ≈ 1 km : à confirmer sur le
+- **Noms et sens vérifiés (12.10.2026)** dans la couche publique ASTRA
+  [SVZ_2022](https://services3.arcgis.com/IXAVBLfeIsfhE7s9/arcgis/rest/services/SVZ_2022/FeatureServer)
+  (champs `Standort`, `Fahrtrichtung`, `SiteReferenceID`), source du
   [tableau de bord ASTRA](https://fedro.maps.arcgis.com/apps/dashboards/1673b262537546098589ad3820e5ece2).
+  L'hypothèse de placement d'après les coordonnées était en partie fausse. Postes retenus : voir § 5.
 - **Ce que ça permet :**
   - un état mesuré, même sans message (« 8 km/h à Göschenen vers le sud ») ;
   - le débit de véhicules et la part de poids lourds ;
@@ -114,10 +115,61 @@ actuelle ne le couvre pas.
 - **API commerciales (TomTom, HERE, Google) :** temps de parcours réels, mais payants.
 - **Jeu de données sur les feux de circulation :** il existe, mais n'est pas pertinent ici.
 
-## 4. Recommandation (en attente de choix)
+## 4. Recommandation du 08.10.2026
 
 1. **Gothard :** état par sens, avec la durée du bouchon et une estimation du temps perdu clairement indiquée
    comme telle, plus un bandeau fermetures et la liste des prochaines fermetures.
 2. **Vitesse mesurée** par les compteurs, dès que le produit est ajouté au compte.
 3. **Comparateur des traversées alpines :** même code, filtre élargi.
 4. **Polling plus léger** avec `If-Modified-Since`.
+
+## 5. Recadrage du 12.10.2026
+
+Le Gothard n'était qu'un exemple : le widget vise la valeur de service sur les grands axes et points de passage
+de vacances, sans suivre tout le réseau. Intégration en iframe sur le site média, à trois largeurs :
+964 px (grand emplacement), 632 px (colonne de texte) et < 400 px (mobile, peu d'interaction possible).
+
+### Choix
+
+- **Périmètre v1 : les traversées alpines routières.** Ce sont les quatre passages routiers suivis par la
+  Confédération pour le trafic transalpin : Gothard (A2), San Bernardino (A13), Simplon (A9), Grand-Saint-Bernard
+  (H21/A21) ([OFT, rapport semestriel 2025](https://www.bav.admin.ch/dam/it/sd-web/UUtF2-g4E5q3/2-semesterbericht-2025-aqgv.pdf)).
+- **Concept : vue d'ensemble + fiche.** La liste triée par gravité, et `?point=<id>` pour la fiche d'une traversée
+  à glisser dans un article.
+- **Compteurs : oui.** Intégrés au code ; au 12.10.2026, l'appel renvoie HTTP 403 « Access to this API has been
+  disallowed » : le produit « Road traffic – traffic counters » doit encore être ajouté à l'application.
+
+### Périmètre de chaque traversée (`lib/crossings.mjs`)
+
+| Traversée | Tronçons retenus (lieu dans l'en-tête) | Compteurs (sens sud / nord) |
+|---|---|---|
+| Gothard | A2 Erstfeld – Faido ; col H2 suivi à part | CH:0150 tunnel (.01 / .02), CH:0195 Erstfeld S (.01-.02 / .03-.04), CH:0293 Quinto (.01-.02 / .03-.04), CH:0010 Hospental, col (.01 / .02) |
+| San Bernardino | A13 Splügen – Mesocco | CH:0044 tunnel (.01 / .02), CH:0539 Hinterrhein (.01 / .02), CH:0203 Roveredo (.01 / .02) |
+| Simplon | A9 vers Domodossola ou lieux du col | CH:0110 Josefgalerie (.01 / .02), CH:0527 Gondo (.01 / .02) |
+| Grand-Saint-Bernard | H21 et A21 entières | CH:0041 tunnel (.01 / .02), CH:0209 Martigny Le Brocard (.01-.02 / .03) |
+
+- **Sens des messages :** flèche du texte et ordre nord → sud des extrémités d'itinéraire, sinon alertC.
+  Le signe alertC dépend de la route : A2, A13, H21 `negative` = sud ; **A9 `positive` = sud**.
+  Texte et alertC concordent dans 171 cas sur 171 (archive du 08 au 12.10).
+- **Nature d'un message :** lue dans « Sachlage » (vocabulaire fermé : « Strecke gesperrt », « Stau »,
+  « stockender Verkehr », « Stau zu erwarten », « Einfahrt gesperrt »…). « Strecke gesperrt » avec
+  « eine lokale Umleitung ist eingerichtet » = fermé mais franchissable.
+- **Plages horaires :** « Dauer: nachts voraussichtlich 11.10.2026 22:00 bis 16.10.2026 05:00 » = chaque nuit de
+  22:00 à 05:00. `validPeriod` ne donne que l'enveloppe : sans cette lecture, une fermeture nocturne paraissait
+  active toute la journée (360 messages « nachts », 173 « tagsüber » dans l'archive).
+
+### Possibilités conservées pour plus tard
+
+Mots-clés testés sur l'archive du 08 au 12.10.2026 (messages / bouchons / fermetures) :
+
+| Groupe | Points | Présence dans le flux |
+|---|---|---|
+| Passages frontière | Bâle (A2/A3, Weil, Rheinfelden), Chiasso-Brogeda (A2), Genève-Bardonnex (A1), St. Margrethen (A1/A13), Vallorbe (A9) | Rheinfelden 16/2/4, St. Margrethen 27/2/8, Bardonnex 4/2/0, Vallorbe 1/1/0, Brogeda 1/0/0 |
+| Goulets du Plateau | Belchen (A2), Härkingen–Wiggertal (A1/A2), Baregg et Gubrist (A1), Lausanne–Genève (A1) | Härkingen 20/1/4, Belchen 7/0/0, Baregg 4/0/0, Gubrist 2/2/0 |
+| Cols (ouvert / fermé) | Furka, Grimsel, Nufenen, Susten, Oberalp, Julier, Bernina, col du Gothard | seule l'info « fermé » est fiable ; compteurs ASTRA existants : Furka CH:0260, Grimsel CH:0155, Susten CH:0262, Oberalp CH:0261, Julier CH:0014, Bernina CH:0634, Ofen CH:0227 |
+| Ferroutage | Lötschberg (Kandersteg), Furka (Realp), Vereina (Klosters), Simplon (Brigue) | quelques messages ; les temps d'attente ne sont pas dans ce flux |
+
+Ajouter un groupe = ajouter des entrées dans `lib/crossings.mjs` (tronçons, ordre des extrémités, signe alertC,
+compteurs). Le sens « S / N » devra être généralisé (ex. « vers la France ») pour les passages frontière.
+
+Toujours en attente : polling plus léger avec `If-Modified-Since` (§ 2).
