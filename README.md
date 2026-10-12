@@ -2,7 +2,7 @@
 
 Widget éditorial (≤ 632 px, mobile d'abord) basé sur les messages trafic temps réel de l'OFROU
 (DATEX II, [opentransportdata.swiss](https://opentransportdata.swiss)).
-Compte rendu des données réelles : [ETAPE0.md](ETAPE0.md).
+Compte rendu des données réelles : [ETAPE0.md](ETAPE0.md). Pistes pour la suite : [PISTES.md](PISTES.md).
 
 ## 1. Clé API (gratuite)
 
