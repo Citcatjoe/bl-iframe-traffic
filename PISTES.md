@@ -175,3 +175,24 @@ Ajouter un groupe = ajouter des entrées dans `lib/crossings.mjs` (tronçons, or
 compteurs). Le sens « S / N » devra être généralisé (ex. « vers la France ») pour les passages frontière.
 
 Toujours en attente : polling plus léger avec `If-Modified-Since` (§ 2).
+
+## 6. Passage à la carte (12.10.2026)
+
+Mise en page reprise de `bl-iframe-map-ski` : shell Blick (base.css, polices, `iframeHeightAdjustment.js`), fond
+OpenFreeMap Positron + relief, trois mises en page (964 / 632 / mobile, hauteurs fixes 600 / 540 / 520), panneau unique
+liste ↔ fiche. Tracés : axes nationaux ASTRA (BS_AXIS) ; postes de comptage : couche ASTRA SVZ_2022.
+
+Choix provisoires, à valider (contenu du panneau encore ouvert) :
+
+- **Pastilles** : nom + icône d'état + chiffre clé (km de bouchon, ou vitesses mesurées ↓ / ↑ sans alerte).
+  En 632 px et mobile à l'échelle Suisse, pastille compacte avec le nom (sans lui, la carte était illisible).
+- **Couleurs** : fermé rouge foncé, bouchon rouge, ralenti et déviation orange (déviation en pointillé), risque et
+  jonction fermée jaune, « pas d'alerte » vert. Le vert s'appuie sur l'absence de message ; les vitesses mesurées
+  l'accompagnent partout où elles existent.
+- **Icônes** : fermé `road-barrier`, bouchon `car-rear`, ralenti `gauge`, déviation `route`, risque
+  `triangle-exclamation`, jonction `ban`, pas d'alerte `circle-check`.
+- **Fiche** : chiffre principal = km de bouchon, sinon vitesses mesurées, sinon l'état ; puis un bloc par sens
+  (état, km, attente estimée, « depuis », vitesse et débit du compteur principal, part de poids lourds, autres
+  compteurs), col du Gothard, messages en cours, prochaines fermetures, historique 12 h.
+- **Mobile** : liste compacte des 4 traversées sous la carte ; au clic, fiche courte (état par sens) et bouton « Détails ».
+- Les vitesses sont des mesures d'une minute : à lisser (moyenne sur 5 min) avant d'en tirer une couleur.

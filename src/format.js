@@ -24,15 +24,15 @@ export function cleanText(t) {
 export const km = (x) => x.toLocaleString("fr-CH", { maximumFractionDigits: 1 });
 
 export const LEVELS = {
-  closed: { label: "Fermé", short: "Fermé", chip: "bg-red-700 text-white", color: "#b91c1c" },
-  jam: { label: "Bouchon", short: "Bouchon", chip: "bg-red-100 text-red-900 ring-1 ring-red-300", color: "#ef4444" },
-  slow: { label: "Ralenti", short: "Ralenti", chip: "bg-orange-100 text-orange-900 ring-1 ring-orange-300", color: "#f97316" },
-  detour: { label: "Fermé · déviation locale", short: "Fermé · déviation locale", chip: "bg-amber-100 text-amber-900 ring-1 ring-amber-300", color: "#d97706" },
-  expected: { label: "Risque de bouchon", short: "Risque de bouchon", chip: "bg-yellow-50 text-yellow-900 ring-1 ring-yellow-300", color: "#ca8a04" },
-  access: { label: "Jonction fermée", short: "Jonction fermée", chip: "bg-sky-50 text-sky-900 ring-1 ring-sky-200", color: "#0284c7" },
-  clear: { label: "Aucune perturbation signalée", short: "Aucune perturbation signalée", chip: "bg-stone-100 text-stone-600", color: "#a8a29e" },
+  closed: { label: "Fermé", short: "Fermé" },
+  jam: { label: "Bouchon", short: "Bouchon" },
+  slow: { label: "Ralenti", short: "Ralenti" },
+  detour: { label: "Fermé · déviation locale", short: "Déviation" },
+  expected: { label: "Risque de bouchon", short: "Risque" },
+  access: { label: "Jonction fermée", short: "Jonction fermée" },
+  clear: { label: "Aucune perturbation signalée", short: "Pas d'alerte" },
 };
-const ORDER = ["closed", "jam", "slow", "detour", "expected", "access", "clear"];
+export const ORDER = ["closed", "jam", "slow", "detour", "expected", "access", "clear"];
 export const levelRank = (l) => {
   const i = ORDER.indexOf(l);
   return i < 0 ? ORDER.length : i;

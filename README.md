@@ -1,8 +1,9 @@
 # Traversées alpines : état du trafic (prototype)
 
-Widget éditorial intégré en iframe (964 / 632 / < 400 px, mobile d'abord) : état en temps réel des quatre
-traversées alpines routières (Gothard, San Bernardino, Simplon, Grand-Saint-Bernard), par sens, d'après les
-messages trafic de l'OFROU et ses compteurs (DATEX II, [opentransportdata.swiss](https://opentransportdata.swiss)).
+Widget cartographique Blick intégré en iframe (964 / 632 / < 400 px) : état en temps réel des quatre traversées
+alpines routières (Gothard, San Bernardino, Simplon, Grand-Saint-Bernard), par sens, d'après les messages trafic
+de l'OFROU et ses compteurs (DATEX II, [opentransportdata.swiss](https://opentransportdata.swiss)). Carte et panneau
+coulissant repris du projet frère `bl-iframe-map-ski` (même shell Blick, même fond de carte, mêmes largeurs).
 Compte rendu des données réelles : [ETAPE0.md](ETAPE0.md). Pistes et choix de périmètre : [PISTES.md](PISTES.md).
 
 ## 1. Clé API (gratuite)
@@ -46,31 +47,32 @@ npm install
 npm run dev        # API sur :8787 + front Vite (proxy /api)
 npm test           # parseur DATEX II, traversées, compteurs, sur des extraits réels
 npm run traversees # exploration en ligne de commande (scripts/traversees.mjs : --json, --all, --dump, --file, --at)
+npm run geo        # régénère public/data/traffic-geo.json (tracés et compteurs, couches ASTRA) si le périmètre change
 ```
 
 Production locale : `npm run build && npm start` (Express sert aussi `dist/`).
 
 ## Widget
 
+Carte MapLibre (fond OpenFreeMap Positron + relief, comme `bl-iframe-map-ski`) : tracé de chaque tronçon suivi
+coloré selon son état, pastille par traversée (nom, icône d'état, km ou vitesse mesurée), col du Gothard et postes
+de comptage révélés au zoom. Panneau unique liste ↔ fiche : liste triée par gravité, fiche avec état par sens,
+vitesses mesurées, messages en cours, prochaines fermetures et historique.
+
+| Largeur de l'iframe | Mise en page (hauteur fixe) |
+|---|---|
+| ≥ 860 px (cible 964) | panneau fixe de 312 px à gauche + carte (600 px) |
+| 520–859 px (cible 632) | carte pleine largeur, panneau superposé ouvert par « Liste » ou un clic sur la carte (540 px) |
+| < 520 px (mobile) | carte + liste compacte sous la carte, fiche courte au clic, « Détails » en plein cadre (520 px) |
+
 | URL | Contenu |
 |---|---|
-| `/` | vue d'ensemble des quatre traversées, triées par gravité |
-| `/?point=gothard` | fiche d'une traversée (`gothard`, `san-bernardino`, `simplon`, `grand-st-bernard`) avec historique |
-| `/?debug=1` | ajoute la liste des messages parsés |
+| `/` | carte des quatre traversées |
+| `/?point=gothard` | fiche d'une traversée ouverte d'emblée (`gothard`, `san-bernardino`, `simplon`, `grand-st-bernard`) |
+| `/?debug=1` | ajoute la liste des messages parsés sous le widget |
 
-La mise en page suit la largeur de l'iframe : compacte < 480 px (lisible sans interaction), standard 480–899 px,
-large ≥ 900 px.
-
-### Intégration iframe
-
-```html
-<div data-bl-traffic data-src="https://HOTE-DU-WIDGET/"></div>
-<div data-bl-traffic data-src="https://HOTE-DU-WIDGET/" data-point="gothard"></div>
-<script src="https://HOTE-DU-WIDGET/embed.js" async></script>
-```
-
-`embed.js` crée l'iframe et ajuste sa hauteur : le widget envoie `{ type: "bl-traffic:height", height, point }`
-à la page parente à chaque changement de hauteur.
+Intégration : iframe Blick standard. La hauteur est gérée par le script Blick `iframeHeightAdjustment.js`
+(chargé depuis blick.ch, copie locale en repli dans `public/js/`), comme `base.css` (tokens clair/sombre) et les polices.
 
 ## API
 
@@ -99,7 +101,9 @@ lib/otd-client.mjs   appels SOAP, erreurs typées (AUTH, RATE_LIMIT, TIMEOUT, �
 server/poller.mjs    fetch → parse → archive, par API, espacement minimal
 server/store.mjs     SQLite : polls, messages (dédoublonnés par situation_id + version), observations, counter_values
 server/index.mjs     Express
-src/                 React + Tailwind ; public/embed.js
+src/                 React + Tailwind + MapLibre : map/ (fond, pastilles, tracés), components/ (panneau, fiche), lib/levels.js (couleurs et icônes des niveaux)
+public/              shell Blick (css, js, fonts), data/ch*.geojson (contour CH), data/traffic-geo.json (npm run geo)
+scripts/             traversees.mjs (CLI), build-geo.mjs (géométries ASTRA)
 data/                archive.sqlite, latest.json, dumps XML (ignoré par git)
 ```
 

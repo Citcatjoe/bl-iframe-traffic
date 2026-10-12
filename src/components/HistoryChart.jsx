@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { DIRS, LEVELS, hhmm } from "../format.js";
+import { styleOf } from "../lib/levels";
 
-const COLORS = { S: "#b91c1c", N: "#1d4ed8" };
+const COLORS = { S: "#121010", N: "#2D7FF9" };
 const STROKE = { S: 3.5, N: 2 }; // S dessiné en premier et plus épais : reste visible si les deux sens se superposent
 const PAD = { l: 30, r: 34, t: 8, b: 20 };
 const BAND = 7; // hauteur d'une bande de niveau
@@ -59,7 +60,7 @@ export default function HistoryChart({ data, small, directions }) {
       else runs.push({ t, t1, l });
     });
     return runs.map(({ t, t1, l }) => (
-      <rect key={t} x={x(t)} y={top} width={Math.max(1, x(t1) - x(t))} height={BAND} fill={LEVELS[l]?.color ?? "#ddd"} />
+      <rect key={t} x={x(t)} y={top} width={Math.max(1, x(t1) - x(t))} height={BAND} fill={styleOf(l).color} />
     ));
   };
 
@@ -74,7 +75,7 @@ export default function HistoryChart({ data, small, directions }) {
   return (
     <div ref={ref}>
       {polls < 2 ? (
-        <p className="py-6 text-center text-sm text-stone-500">
+        <p className="py-6 text-center text-sm text-ink-weak">
           L'historique se construit : un relevé toutes les 3 minutes ({polls} pour l'instant).
         </p>
       ) : (
@@ -82,20 +83,20 @@ export default function HistoryChart({ data, small, directions }) {
           <svg width={w} height={H} role="img" aria-label={`Longueur des bouchons, ${hours} dernières heures`}>
             {[0, yMax / 2, yMax].map((v) => (
               <g key={v}>
-                <line x1={PAD.l} x2={w - PAD.r} y1={y(v)} y2={y(v)} stroke="#e7e5e4" />
-                <text x={PAD.l - 4} y={y(v) + 4} textAnchor="end" className="fill-stone-500 text-[10px]">
+                <line x1={PAD.l} x2={w - PAD.r} y1={y(v)} y2={y(v)} stroke="#E5E3E3" />
+                <text x={PAD.l - 4} y={y(v) + 4} textAnchor="end" className="fill-[#6A6262] text-[10px]">
                   {v}
                 </text>
               </g>
             ))}
             {hasSpeed &&
               [0, 60, 120].map((v) => (
-                <text key={v} x={w - PAD.r + 4} y={yv(v) + 4} className="fill-stone-400 text-[10px]">
+                <text key={v} x={w - PAD.r + 4} y={yv(v) + 4} className="fill-[#A5A1A1] text-[10px]">
                   {v}
                 </text>
               ))}
             {ticks.map((t) => (
-              <text key={t} x={x(t)} y={H - 5} textAnchor="middle" className="fill-stone-500 text-[10px]">
+              <text key={t} x={x(t)} y={H - 5} textAnchor="middle" className="fill-[#6A6262] text-[10px]">
                 {hhmm(new Date(t).toISOString())}
               </text>
             ))}
@@ -108,7 +109,7 @@ export default function HistoryChart({ data, small, directions }) {
               ))}
             {["S", "N"].map((dir, i) => (
               <g key={dir}>
-                <text x={PAD.l - 4} y={bandTop + i * (BAND + 1) + BAND - 0.5} textAnchor="end" className="fill-stone-500 text-[9px]">
+                <text x={PAD.l - 4} y={bandTop + i * (BAND + 1) + BAND - 0.5} textAnchor="end" className="fill-[#6A6262] text-[9px]">
                   {DIRS[dir].arrow}
                 </text>
                 {bands(dir, bandTop + i * (BAND + 1))}
@@ -117,7 +118,7 @@ export default function HistoryChart({ data, small, directions }) {
           </svg>
         )
       )}
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-600">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-weak">
         {["S", "N"].map((dir) => (
           <span key={dir} className="flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-4" style={{ background: COLORS[dir] }} />
@@ -127,11 +128,11 @@ export default function HistoryChart({ data, small, directions }) {
         <span>Trait plein : km de bouchon{hasSpeed ? " · pointillé : vitesse mesurée (km/h, axe droit)" : ""}</span>
       </div>
       {polls >= 2 && (
-        <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-stone-600">
+        <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-ink-weak">
           <span>Bandes ↓↑ : niveau signalé</span>
           {levelsSeen.map((l) => (
             <span key={l} className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2" style={{ background: LEVELS[l]?.color }} />
+              <span className="inline-block h-2 w-2" style={{ background: styleOf(l).color }} />
               {LEVELS[l]?.label ?? l}
             </span>
           ))}
