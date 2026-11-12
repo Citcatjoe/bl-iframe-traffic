@@ -1,8 +1,9 @@
-import { COUNTER_MIN_ZOOM } from "../config/mapConfig";
+import { COUNTER_MIN_ZOOM, MAP_THEMES } from "../config/mapConfig";
 import { styleOf } from "../lib/levels";
+import { resolveColor } from "../lib/theme.js";
 
 // Tracés surveillés (blanc + couleur du niveau) et points de comptage secondaires (révélés en zoomant).
-// Les propriétés dynamiques (niveau, sélection, survol, vitesses) sont recalculées dans `corridorData`.
+// Les propriétés dynamiques (niveau, sélection, survol) sont recalculées dans `setCorridorData`.
 
 const AXES = "axes";
 const DOTS = "counter-dots";
@@ -10,7 +11,9 @@ export const LINE_LAYERS = ["axes-hit"];
 
 const EMPTY = { type: "FeatureCollection", features: [] };
 
-export function addCorridorLayers(map) {
+/** À appeler sur chaque `style.load` (le style est remplacé au changement de thème). */
+export function addCorridorLayers(map, theme) {
+  const t = MAP_THEMES[theme];
   map.addSource(AXES, { type: "geojson", data: EMPTY });
   map.addSource(DOTS, { type: "geojson", data: EMPTY });
   const width = (base, sel, hov) => ["case", ["get", "sel"], sel, ["get", "hov"], hov, base];
@@ -20,7 +23,7 @@ export function addCorridorLayers(map) {
     type: "line",
     source: AXES,
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": "#FFFFFF", "line-width": lineZoom(width(7, 10, 9)) },
+    paint: { "line-color": t.casing, "line-width": lineZoom(width(7, 10, 9)) },
   });
   map.addLayer({
     id: "axes-line",
@@ -48,7 +51,7 @@ export function addCorridorLayers(map) {
     paint: {
       "circle-radius": 4.5,
       "circle-color": ["get", "color"],
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": t.casing,
       "circle-stroke-width": 2,
     },
   });
@@ -66,40 +69,32 @@ export function addCorridorLayers(map) {
       "text-optional": true,
       "text-max-width": 30,
     },
-    paint: { "text-color": "#504949", "text-halo-color": "rgba(255,255,255,0.95)", "text-halo-width": 1.6 },
+    paint: { "text-color": t.counter.color, "text-halo-color": t.counter.halo, "text-halo-width": 1.6 },
   });
 }
 
-/** « 72 / 69 km/h » (S / N) d'un point de comptage, ou son nom seul sans mesure. */
-function dotLabel(name, s, n) {
-  const v = [s, n].map((r) => r?.speed_light ?? null);
-  if (v.every((x) => x == null)) return name;
-  return `${name} · ${v.map((x) => x ?? "–").join(" / ")} km/h`;
-}
-
-/** Met à jour les tracés et les points selon l'état courant. */
+/** Met à jour les tracés et les points selon l'état courant. Seuls les points de `crossings` (filtrés) sont tracés. */
 export function setCorridorData(map, geo, crossings, sel, hover) {
   if (!geo || !map.getSource(AXES)) return;
   const byId = new Map(crossings.map((c) => [c.id, c]));
   const axes = geo.features
-    .filter((f) => f.properties.kind === "axis")
+    .filter((f) => f.properties.kind === "axis" && byId.has(f.properties.crossing))
     .map((f) => {
       const id = f.properties.crossing;
       const st = styleOf(byId.get(id)?.level);
-      return { ...f, properties: { crossing: id, color: st.color, dashed: !!st.dashed, sel: id === sel, hov: id === hover } };
+      return { ...f, properties: { crossing: id, color: resolveColor(st.color), dashed: !!st.dashed, sel: id === sel, hov: id === hover } };
     })
     // Sélection et survol dessinés au-dessus
     .sort((a, b) => a.properties.sel - b.properties.sel || a.properties.hov - b.properties.hov);
 
   const dots = geo.features
-    .filter((f) => f.properties.kind === "counter" && !f.properties.main && f.properties.segment === "main")
+    .filter((f) => f.properties.kind === "counter" && !f.properties.main && byId.has(f.properties.crossing))
     .map((f) => {
-      const { crossing, site, name } = f.properties;
+      const { crossing, name } = f.properties;
       const c = byId.get(crossing);
-      const find = (d) => c?.directions[d].counters?.find((k) => k.site === site) ?? null;
       return {
         ...f,
-        properties: { crossing, color: styleOf(c?.level).color, label: dotLabel(name, find("S"), find("N")) },
+        properties: { crossing, color: resolveColor(styleOf(c?.level).color), label: name },
       };
     });
 
@@ -107,7 +102,7 @@ export function setCorridorData(map, geo, crossings, sel, hover) {
   map.getSource(DOTS).setData({ type: "FeatureCollection", features: dots });
 }
 
-/** Traversée sous le point (tracé), ou null. */
+/** Point suivi sous le curseur (tracé), ou null. */
 export function pickCorridor(map, pt, tolerance) {
   if (!map.getLayer("axes-hit")) return null;
   const f = map.queryRenderedFeatures(
@@ -120,7 +115,7 @@ export function pickCorridor(map, pt, tolerance) {
   return f?.properties.crossing ?? null;
 }
 
-/** Emprise [[w,s],[e,n]] d'une traversée : tracé + compteurs. */
+/** Emprise [[w,s],[e,n]] d'un point suivi : tracé, position et compteurs. */
 export function crossingBounds(geo, id) {
   let w = 180, s = 90, e = -180, n = -90;
   const add = ([x, y]) => {

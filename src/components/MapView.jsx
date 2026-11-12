@@ -1,19 +1,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  CH_BOUNDS,
   COOPERATIVE_GESTURES,
-  FIT_PADDING,
+  OVERVIEW,
   FLY,
   FOCUS_MAX_ZOOM,
   FOCUS_PADDING,
   GEO_URL,
-  MAP_ATTRIBUTION,
-  MAP_STYLE_URL,
+  MAP_THEMES,
   MAX_BOUNDS,
-  PASS_MIN_ZOOM,
 } from "../config/mapConfig";
-import { LEVELS } from "../format.js";
-import { pillText, shortName, styleOf } from "../lib/levels";
+import { shortName } from "../lib/levels";
+import { STATUS, rowOf } from "../lib/status.js";
+import { resolveColor } from "../lib/theme.js";
 import { customizeBasemap } from "../map/basemap";
 import { addCorridorLayers, crossingBounds, pickCorridor, setCorridorData } from "../map/corridors";
 import { loadMapEngine, MAP_LOCALE } from "../map/engine";
@@ -28,54 +26,47 @@ const loadGeo = () =>
     return r.json();
   }));
 
-/** Pastilles : une par traversée (sur son compteur principal) + le col du Gothard (compteur du col). */
+const DOT = "\uf111"; // fa-circle : même pastille que les listes
+const BARRIER = "\ue562"; // fa-road-barrier : col fermé, comme dans les listes
+
+/**
+ * Pastilles : une par point suivi, à sa position (`kind: "point"` de traffic-geo.json). Une ligne : la pastille de
+ * couleur des listes (barrière pour un col fermé) et le nom court ; le statut et le détail sont dans la liste.
+ */
 function pillItems(geo, crossings) {
   if (!geo) return [];
-  const counters = geo.features.filter((f) => f.properties.kind === "counter");
-  const items = [];
-  for (const c of crossings) {
-    const anchor = counters.find((f) => f.properties.crossing === c.id && f.properties.main);
-    if (anchor) {
-      const st = styleOf(c.level);
-      const [lng, lat] = anchor.geometry.coordinates;
-      const name = shortName(c);
-      items.push({
-        id: c.id,
-        target: c.id,
-        level: 1,
-        lng,
-        lat,
-        name,
-        text: pillText(c),
-        compact: c.level === "clear" ? name : `${name} · ${pillText(c)}`,
-        glyph: st.glyph,
-        color: st.color,
-      });
-    }
-    const passAnchor = c.pass && counters.find((f) => f.properties.crossing === c.id && f.properties.segment === "pass");
-    if (passAnchor) {
-      const st = styleOf(c.pass.closed ? "closed" : "clear");
-      const [lng, lat] = passAnchor.geometry.coordinates;
-      const text = c.pass.closed ? LEVELS.closed.label : "Pas de fermeture";
-      items.push({ id: `${c.id}:pass`, target: c.id, level: 2, minZoom: PASS_MIN_ZOOM, lng, lat, name: "Col du Gothard", text, compact: text, glyph: st.glyph, color: st.color });
-    }
-  }
-  return items;
+  const anchors = new Map(geo.features.filter((f) => f.properties.kind === "point").map((f) => [f.properties.crossing, f.geometry.coordinates]));
+  return crossings.flatMap((c) => {
+    const at = anchors.get(c.id);
+    if (!at) return [];
+    const r = rowOf(c);
+    return [{
+      id: c.id,
+      target: c.id,
+      level: 1,
+      lng: at[0],
+      lat: at[1],
+      text: shortName(c),
+      glyph: r.closedPass ? BARRIER : DOT,
+      color: resolveColor(STATUS[r.level].color),
+    }];
+  });
 }
 
 /**
- * Carte : tracés, pastilles, compteurs. Vole vers `sel` quand il change ; revient à la vue Suisse quand il redevient null.
+ * Carte : tracés, pastilles, compteurs. Vole vers `sel` quand il change ; revient à la vue d'ensemble quand il redevient null.
  * Initialisée seulement quand elle approche de l'écran.
  */
-export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect, listToggle }) {
+export function MapView({ crossings, sel, hover, mode, width, theme, onHover, onSelect, listToggle }) {
   const containerRef = useRef(null);
   const instance = useRef(null); // { map, pills }
   const [generation, setGeneration] = useState(0); // incrémenté à chaque carte prête
   const [geo, setGeo] = useState(null);
-  const items = useMemo(() => pillItems(geo, crossings), [geo, crossings]);
+  // `theme` : les couleurs `var(--…)` des pastilles sont résolues pour le thème courant.
+  const items = useMemo(() => pillItems(geo, crossings), [geo, crossings, theme]);
   const live = useRef(null);
   useLayoutEffect(() => {
-    live.current = { items, crossings, geo, sel, hover, mode, onHover, onSelect };
+    live.current = { items, crossings, geo, sel, hover, mode, theme, onHover, onSelect };
   });
 
   useEffect(() => {
@@ -113,9 +104,9 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
       if (cancelled) return;
       const map = new gl.Map({
         container: el,
-        style: MAP_STYLE_URL,
-        bounds: CH_BOUNDS,
-        fitBoundsOptions: { padding: FIT_PADDING[live.current.mode] },
+        style: MAP_THEMES[live.current.theme].style,
+        bounds: OVERVIEW[live.current.mode].bounds,
+        fitBoundsOptions: { padding: OVERVIEW[live.current.mode].padding },
         maxBounds: MAX_BOUNDS,
         attributionControl: false,
         dragRotate: false,
@@ -126,7 +117,7 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
       });
       map.touchZoomRotate.disableRotation();
       const pills = new PillLayer(map);
-      const self = { map, pills, loaded: false };
+      const self = { map, pills, loaded: false, styleToken: 0 };
       instance.current = self;
       const isCurrent = () => !cancelled && instance.current === self;
 
@@ -136,23 +127,35 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
         retryTimer = setTimeout(() => !cancelled && create(), 300);
       });
 
+      // Chaque style chargé (au départ, puis à chaque changement de thème, qui remplace le style et retire nos
+      // couches) : ajustements du fond, tracés, pastilles, aux couleurs du thème.
+      map.on("style.load", () => {
+        if (!isCurrent()) return;
+        const token = ++self.styleToken;
+        const t = live.current.theme;
+        try {
+          customizeBasemap(map, t, () => isCurrent() && self.styleToken === token);
+        } catch (err) {
+          console.warn("Fond de carte : ajustements partiels", err);
+        }
+        addCorridorLayers(map, t);
+        if (!self.loaded) return;
+        const { geo: g, crossings: cr, sel: s, hover: h } = live.current;
+        setCorridorData(map, g, cr, s, h);
+        pills.attach();
+      });
+
       map.on("load", () => {
         if (!isCurrent()) return;
         map.resize();
         const { mode: m, sel: s, geo: g } = live.current;
         const focus = s && g ? map.cameraForBounds(crossingBounds(g, s), { padding: FOCUS_PADDING[m], maxZoom: FOCUS_MAX_ZOOM }) : null;
         if (focus) map.jumpTo(focus);
-        else map.fitBounds(CH_BOUNDS, { padding: FIT_PADDING[m], duration: 0 });
-        try {
-          customizeBasemap(map, isCurrent);
-        } catch (err) {
-          console.warn("Fond de carte : ajustements partiels", err);
-        }
-        addCorridorLayers(map);
+        else map.fitBounds(OVERVIEW[m].bounds, { padding: OVERVIEW[m].padding, duration: 0 });
         self.loaded = true;
-        const { items: it, crossings: cr, hover: h } = live.current;
+        const { items: it, crossings: cr, hover: h, theme: t } = live.current;
         setCorridorData(map, g, cr, s, h);
-        pills.update({ items: it, sel: s, hover: h, mode: m });
+        pills.update({ items: it, sel: s, hover: h, mode: m, theme: t });
         pills.init().then(() => isCurrent() && setGeneration((n) => n + 1));
         setGeneration((n) => n + 1);
       });
@@ -199,11 +202,19 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
   useEffect(() => {
     const cur = instance.current;
     if (!cur?.loaded) return;
-    cur.pills.update({ items, sel, hover, mode });
+    cur.pills.update({ items, sel, hover, mode, theme });
     setCorridorData(cur.map, geo, crossings, sel, hover);
-  }, [items, crossings, geo, sel, hover, mode, generation]);
+  }, [items, crossings, geo, sel, hover, mode, theme, generation]);
 
-  // Changement de largeur : recadrage sur la Suisse
+  // Changement de thème (CHANGE_THEME de la page parente) : autre fond, nos couches sont rajoutées sur `style.load`.
+  const lastTheme = useRef(theme);
+  useEffect(() => {
+    if (lastTheme.current === theme) return;
+    lastTheme.current = theme;
+    instance.current?.map.setStyle(MAP_THEMES[theme].style, { diff: false });
+  }, [theme]);
+
+  // Changement de largeur : recadrage sur la vue d'ensemble
   const lastWidth = useRef(width);
   useEffect(() => {
     if (lastWidth.current === width) return;
@@ -212,11 +223,11 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
     if (!map) return;
     requestAnimationFrame(() => {
       map.resize();
-      map.fitBounds(CH_BOUNDS, { padding: FIT_PADDING[mode], duration: 0 });
+      map.fitBounds(OVERVIEW[mode].bounds, { padding: OVERVIEW[mode].padding, duration: 0 });
     });
   }, [width, mode]);
 
-  // Vol vers la sélection, retour à la Suisse quand elle est levée
+  // Vol vers la sélection, retour à la vue d'ensemble quand elle est levée
   const lastSel = useRef(sel);
   useEffect(() => {
     const prev = lastSel.current;
@@ -225,16 +236,16 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
     const cur = instance.current;
     if (!cur?.loaded) return;
     const { mode: m, geo: g } = live.current;
-    const bounds = sel ? crossingBounds(g, sel) : CH_BOUNDS;
+    const bounds = sel ? crossingBounds(g, sel) : OVERVIEW[m].bounds;
     if (!bounds) return;
     const cam = sel
       ? cur.map.cameraForBounds(bounds, { padding: FOCUS_PADDING[m], maxZoom: FOCUS_MAX_ZOOM })
-      : cur.map.cameraForBounds(CH_BOUNDS, { padding: FIT_PADDING[m] });
+      : cur.map.cameraForBounds(bounds, { padding: OVERVIEW[m].padding });
     if (cam) cur.map.flyTo({ ...cam, ...FLY, essential: true });
   }, [sel]);
 
   const zoomBy = (fn) => instance.current && instance.current.map[fn]();
-  const showAll = () => instance.current?.map.fitBounds(CH_BOUNDS, { padding: FIT_PADDING[mode], duration: 600 });
+  const showAll = () => instance.current?.map.fitBounds(OVERVIEW[mode].bounds, { padding: OVERVIEW[mode].padding, duration: 600 });
 
   return (
     <div className="relative order-1 min-h-0 min-w-0 flex-1">
@@ -243,22 +254,17 @@ export function MapView({ crossings, sel, hover, mode, width, onHover, onSelect,
       <div className="absolute top-2.5 right-2.5 z-[2] flex flex-col gap-1.5">
         {mode !== "mobile" && (
           <>
-            <IconButton icon="fa-solid fa-plus" color="white" label="Zoom avant" onClick={() => zoomBy("zoomIn")} />
-            <IconButton icon="fa-solid fa-minus" color="white" label="Zoom arrière" onClick={() => zoomBy("zoomOut")} />
+            <IconButton icon="fa-solid fa-plus" color="map" label="Zoom avant" onClick={() => zoomBy("zoomIn")} />
+            <IconButton icon="fa-solid fa-minus" color="map" label="Zoom arrière" onClick={() => zoomBy("zoomOut")} />
           </>
         )}
-        <IconButton icon="fa-solid fa-expand" color="white" label="Afficher toute la Suisse" onClick={showAll} />
+        <IconButton icon="fa-solid fa-expand" color="map" label="Afficher tous les points" onClick={showAll} />
       </div>
       {listToggle && (
         <div className="absolute top-3 left-3 z-[2]">
           <Button color="black" iconLeft="fa-solid fa-list" onClick={listToggle.onClick}>
             {listToggle.label}
           </Button>
-        </div>
-      )}
-      {mode !== "wide" && (
-        <div className="pointer-events-none absolute right-0 bottom-0 z-[2] max-w-full truncate rounded-tl-md bg-[rgba(255,255,255,0.8)] px-1.5 py-px text-[9.5px] leading-[1.4] text-[#504949]">
-          {MAP_ATTRIBUTION.replace(/^Carte /, "")}
         </div>
       )}
     </div>

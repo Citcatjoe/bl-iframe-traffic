@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import '@fortawesome/fontawesome-free/css/fontawesome.min.css';
 @import '@fortawesome/fontawesome-free/css/solid.min.css';
+@import '@fortawesome/fontawesome-free/css/regular.min.css';
 
 /*
  * Les couleurs viennent de base.css (Blick, clair/sombre), chargé dans index.html.
@@ -34,10 +35,68 @@
   --color-line-strong: var(--color-stroke-strong);
   --color-glyph-weak: var(--color-icon-weak);
   --color-ok: var(--color-success);
-  --color-map: #eeedea;
+  --color-map: var(--map-bg);
+  --color-map-control: var(--map-control);
+  --color-map-control-hover: var(--map-control-hover);
+  --color-panel: var(--panel-bg);
+  --color-panel-hover: var(--panel-hover);
+  --color-panel-line: var(--panel-line);
 }
 
 @layer base {
+  /* Thème clair tant que iframeHeightAdjustment.js n'a pas posé la paire (style inline, prioritaire). */
+  :root {
+    --is-light-theme: initial;
+    --is-dark-theme: ;
+    /* Fond de la carte avant ses tuiles : hors design system, même bascule que base.css (Positron / Dark). */
+    --map-bg: var(--is-light-theme, #eeedea) var(--is-dark-theme, #1e1a1a);
+    /* Boutons posés sur la carte (zoom, recentrer) : fonds des pastilles de la carte (MAP_THEMES.pill). */
+    --map-control: var(--is-light-theme, var(--color-white)) var(--is-dark-theme, var(--color-grey-800));
+    --map-control-hover: var(--is-light-theme, var(--color-grey-100)) var(--is-dark-theme, var(--color-grey-700));
+    /* Rouge « Fermé » (pastilles, barrière, tracés, fermeture annoncée) : red-900 en clair ; en sombre, un rouge
+       plus clair, lisible sur la carte et le panneau, distinct du rouge Bouchon (red-500) et du rouge Blick (red-400). */
+    --status-closed: var(--is-light-theme, var(--color-red-900)) var(--is-dark-theme, #F25C5C);
+    /* Panneau liste / fiche (mode explore) : blanc en clair ; en sombre `fill-strong`, nettement plus clair que la
+       carte. Survol et ligne choisie un cran au-dessus ; filets et barre de défilement relevés d'autant en sombre
+       (les filets `stroke-weak` et le pouce `fill-strong` y disparaîtraient). */
+    --panel-bg: var(--is-light-theme, var(--color-fill-default)) var(--is-dark-theme, var(--color-fill-strong));
+    --panel-hover: var(--is-light-theme, var(--color-fill-weak)) var(--is-dark-theme, var(--color-grey-700));
+    --panel-line: var(--is-light-theme, var(--color-stroke-weak)) var(--is-dark-theme, var(--color-grey-700));
+    --panel-thumb: var(--is-light-theme, var(--color-fill-strong)) var(--is-dark-theme, var(--color-grey-600));
+    /* Pouce des barres de défilement ; le panneau le redéfinit (--panel-thumb). */
+    --scrollbar-thumb: var(--color-fill-strong);
+    /* Contrôles natifs (barres de défilement…) au thème de la page. */
+    color-scheme: var(--is-light-theme, light) var(--is-dark-theme, dark);
+  }
+  /*
+   * Barres de défilement fines et discrètes (liste, fiche, menu) : pouce `--scrollbar-thumb`, sans rail ni flèches.
+   * Deux syntaxes, jamais ensemble : Chrome (121+) et Safari (18.2+) ignorent ::-webkit-scrollbar dès que
+   * scrollbar-width / scrollbar-color sont posés, et retombent alors sur leur barre native (flèches sous Windows,
+   * pas de couleur dans Safari). Les navigateurs WebKit / Blink (Chrome, Edge, Safari, Opera, Samsung Internet)
+   * reçoivent donc les pseudo-éléments ; les propriétés standard ne vont qu'aux autres (Firefox).
+   * Sur mobile et sous macOS (barres superposées par défaut), le système garde la main sur l'apparition.
+   */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: var(--scrollbar-thumb);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
+  }
   html,
   body {
     margin: 0;
@@ -47,9 +106,6 @@
     font-family: var(--font-body);
     color: var(--color-text-default);
     -webkit-font-smoothing: antialiased;
-  }
-  input[type='search']::-webkit-search-cancel-button {
-    display: none;
   }
 }
 

@@ -23,62 +23,14 @@ export function cleanText(t) {
 
 export const km = (x) => x.toLocaleString("fr-CH", { maximumFractionDigits: 1 });
 
-export const LEVELS = {
-  closed: { label: "Fermé", short: "Fermé" },
-  jam: { label: "Bouchon", short: "Bouchon" },
-  slow: { label: "Ralenti", short: "Ralenti" },
-  detour: { label: "Fermé · déviation locale", short: "Déviation" },
-  expected: { label: "Risque de bouchon", short: "Risque" },
-  access: { label: "Jonction fermée", short: "Jonction fermée" },
-  clear: { label: "Aucune perturbation signalée", short: "Pas d'alerte" },
-};
-export const ORDER = ["closed", "jam", "slow", "detour", "expected", "access", "clear"];
-export const levelRank = (l) => {
-  const i = ORDER.indexOf(l);
-  return i < 0 ? ORDER.length : i;
-};
-
-export const DIRS = {
-  S: { arrow: "↓", short: "Sud" },
-  N: { arrow: "↑", short: "Nord" },
-};
-
-/** Retard : annoncé par l'OFROU, sinon estimation (Gothard). */
-export function delayText(d) {
-  if (d.delay_min != null) return `${d.delay_min} min annoncées`;
-  if (d.delay_estimate) return `≈ ${d.delay_estimate.min}–${d.delay_estimate.max} min (estimation)`;
-  return null;
-}
-
-export const mainCounter = (d) => d.counters?.find((c) => c.main) ?? null;
-
-const LEVEL_SUFFIX = { detour: "déviation locale", closed: "fermeture totale", access: "jonction fermée" };
-
-/** « Nuits du 12.10 au 16.10, 22:00–05:00 · déviation locale » */
-export function closureText(m) {
-  const s = m.schedule;
-  let txt;
-  if (s) {
-    const first = ddmm(m.next_start ?? m.start);
-    const last = m.end ? ddmm(m.end) : null;
-    const plural = s.kind === "night" ? "Nuits" : "Journées";
-    const single = s.kind === "night" ? "Nuit du" : "Journée du";
-    txt = !last || last === first ? `${single} ${first}` : `${plural} du ${first} au ${last}`;
-    txt += `, ${s.from}–${s.to}`;
-  } else {
-    txt = `Dès le ${ddmm(m.next_start)} ${hhmm(m.next_start)}`;
-    if (m.end) txt += ` jusqu'au ${ddmm(m.end)} ${hhmm(m.end)}`;
-  }
-  if (m.segment === "pass") txt = `Col : ${txt}`;
-  const sfx = LEVEL_SUFFIX[m.level];
-  return sfx ? `${txt} · ${sfx}` : txt;
-}
+/** Les deux sens d'un point (libellé et flèche fournis par l'API pour chaque point). */
+export const DIR_KEYS = ["a", "b"];
 
 /** Retire les doublons (tronçons adjacents pour la même nuit). */
 export function dedupeUpcoming(list) {
   const seen = new Set();
   return (list ?? []).filter((m) => {
-    const k = `${m.next_start}|${m.level}|${m.segment}`;
+    const k = `${m.next_start}|${m.level}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;

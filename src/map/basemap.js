@@ -1,4 +1,4 @@
-import { CH_OUTLINE_URL, CH_PRECISE_URL, HILLSHADE, PLACE_LAYERS } from '../config/mapConfig';
+import { CH_OUTLINE_URL, CH_PRECISE_URL, HILLSHADE, MAP_THEMES } from '../config/mapConfig';
 
 // Ajustements du fond de carte (D12–D18). Tolérant : une couche absente du
 // style (autre fournisseur) est ignorée, le reste s'applique.
@@ -13,8 +13,12 @@ const fetchJson = (url) =>
   });
 const loadOutlines = () => (geoCache ??= Promise.all([fetchJson(CH_OUTLINE_URL), fetchJson(CH_PRECISE_URL)]));
 
-/** À appeler sur `load`. `isCurrent()` évite de toucher une carte détruite entre-temps. */
-export function customizeBasemap(map, isCurrent) {
+/**
+ * À appeler sur chaque `style.load` (chargement initial, puis changement de thème : le style est remplacé).
+ * `isCurrent()` évite de toucher une carte détruite, ou un style remplacé entre-temps.
+ */
+export function customizeBasemap(map, theme, isCurrent) {
+  const t = MAP_THEMES[theme];
   const layers = map.getStyle().layers;
 
   // D13 labels en français, D14 noms de pays masqués
@@ -30,7 +34,8 @@ export function customizeBasemap(map, isCurrent) {
     }
   }
 
-  const places = PLACE_LAYERS.filter((id) => map.getLayer(id));
+  const places = t.places.filter((id) => map.getLayer(id));
+  for (const id of t.hidden) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
 
   // D15 Berne au même style que les autres villes
   if (map.getLayer('label_city') && map.getLayer('label_city_capital')) {
@@ -41,11 +46,12 @@ export function customizeBasemap(map, isCurrent) {
     map.setLayoutProperty('label_city_capital', 'icon-image', '');
   }
 
-  // D16 localités atténuées
+  // D16 localités atténuées, en casse normale (le style sombre les met en capitales)
   for (const id of places) {
-    map.setPaintProperty(id, 'text-color', '#A5A1A1');
-    map.setPaintProperty(id, 'text-halo-color', 'rgba(255,255,255,0.9)');
+    map.setPaintProperty(id, 'text-color', t.place.color);
+    map.setPaintProperty(id, 'text-halo-color', t.place.halo);
     map.setPaintProperty(id, 'text-halo-width', 1.2);
+    map.setLayoutProperty(id, 'text-transform', 'none');
   }
 
   // D12 relief ombré discret, sous les labels
@@ -56,12 +62,12 @@ export function customizeBasemap(map, isCurrent) {
     tileSize: HILLSHADE.tileSize,
     maxzoom: HILLSHADE.maxzoom,
   });
-  map.addLayer({ id: 'hill', type: 'hillshade', source: 'dem', paint: HILLSHADE.paint }, firstSymbolId(map));
+  map.addLayer({ id: 'hill', type: 'hillshade', source: 'dem', paint: t.hillshade }, firstSymbolId(map));
 
   // D14 localités hors de Suisse masquées, D17 trame sombre hors de Suisse
   loadOutlines()
     .then(([outline, precise]) => {
-      if (!isCurrent()) return;
+      if (!isCurrent() || map.getSource('ch-shade')) return;
       for (const id of places) {
         const f = map.getFilter(id);
         map.setFilter(id, f ? ['all', f, ['within', outline]] : ['within', outline]);
@@ -76,7 +82,7 @@ export function customizeBasemap(map, isCurrent) {
         },
       });
       map.addLayer(
-        { id: 'ch-shade', type: 'fill', source: 'ch-shade', paint: { 'fill-color': '#121010', 'fill-opacity': 0.13, 'fill-antialias': true } },
+        { id: 'ch-shade', type: 'fill', source: 'ch-shade', paint: { 'fill-color': t.outside.color, 'fill-opacity': t.outside.opacity, 'fill-antialias': true } },
         firstSymbolId(map),
       );
     })

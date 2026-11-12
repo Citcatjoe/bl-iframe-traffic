@@ -196,6 +196,9 @@ Choix provisoires, à valider (contenu du panneau encore ouvert) :
   compteurs), col du Gothard, messages en cours, prochaines fermetures, historique 12 h.
 - **Mobile** : liste compacte des 4 traversées sous la carte ; au clic, fiche courte (état par sens) et bouton « Détails ».
 - Les vitesses sont des mesures d'une minute : à lisser (moyenne sur 5 min) avant d'en tirer une couleur.
+  *Fait le 26.10.2026* : moyenne des relevés des 10 dernières minutes (≈ 4 minutes mesurées, un relevé toutes les
+  3 min), et signalement des compteurs muets (aucun véhicule depuis 6 h ; ex. tunnel du San Bernardino, CH:0044,
+  à zéro depuis le 21.10 sans message de fermeture).
 
 ### Tracés disponibles pour d'autres points (vérifié le 12.10.2026)
 
@@ -212,3 +215,31 @@ Couche publique ASTRA `BS_AXIS` (ArcGIS Online, sans clé), celle utilisée par 
 - Routes cantonales : couverture inégale selon les cantons (ex. H21 et H3 présents ; H2 du Gothard côté UR et H6
   du Grimsel côté BE non trouvés sous ces noms). Pour les cols, prévoir un repli (swisstopo swissTLM3D ou OpenStreetMap).
 - Les bornes kilométriques permettraient de placer les messages qui citent un kilomètre (« bei Kilometer 11.43 »).
+
+## 7. Périmètre de dix points (26.10.2026)
+
+Demande éditoriale : tunnel et col du Gothard, axe A1 Lausanne – Genève, axe A9 Lausanne – Valais, tunnel et col du
+Grand-Saint-Bernard, tunnel du San Bernardino, col du Simplon, douanes de Bardonnex et de Vallorbe. Chaque point est
+autonome (le col n'est plus un sous-élément du tunnel), avec un type (`tunnel`, `col`, `axe`, `douane`) et deux sens
+`a` / `b` nommés (« Vers Genève ») au lieu de sud / nord. Vérifié sur l'archive du 08 au 26.10.2026.
+
+- **Bornes** : A1 de Crissier / Ecublens au Vengeron (le contournement de Genève est exclu, Perly – Bardonnex est la
+  douane) ; A9 de Vennes / Belmont à Martigny (le flux coupe l'itinéraire à Martigny ; les bouchons observés vont
+  jusqu'à Aigle) ; douanes avec leur première jonction (Perly, Ballaigues).
+- **Sens** : le signe alertC dépend de la route, pas du point : A1, A2, A13, H2, H21 `negative` = sens a ; A9 et A21
+  `positive` = sens a. Au Grand-Saint-Bernard, A21 et H21 ont des signes opposés : `alertc` est donc porté par tronçon.
+- **En-tête sans numéro de route** : la fermeture hivernale du col du Grand-Saint-Bernard arrive ainsi
+  (« Bourg-St-Bernard -> St-Oyen zwischen Pass Grosser St. Bernhard Pass … »). `lib/datex.mjs` accepte désormais ces
+  en-têtes (`road: null`) ; 190 des 276 situations sans route de l'archive deviennent lisibles, sans changement ailleurs.
+- **Col du San Bernardino : pas suivi.** Aucun message dans l'archive, alors que le col est fermé depuis le 23.10
+  (TCS) : aucun col grison n'apparaît dans le flux. Point retiré à la demande de la rédaction.
+- **Simplon** : pas de tunnel routier (le tunnel est ferroviaire), seulement le col (A9 Brigue – Gondo, messages sur
+  Berisal, Rothwald, Simplon-Dorf, Gabi, Gondo, ou vers Domodossola ; 7 situations dans l'archive). Aucun message de
+  train-navette (Autoverlad) Brigue – Iselle dans le flux.
+- **Compteurs** : Morges, Rolle, Coppet (A1) ; Chexbres, La Croix, Aigle, St-Maurice (A9) ; Bardonnex (6 voies) ;
+  Josefgalerie et Gondo (Simplon). Aucun sur le col du Grand-Saint-Bernard, ni à Vallorbe (CH:0779 à la douane n'est
+  pas servi par l'API ; Orbe est à 12 km). Écartés car muets ou nuls aux relevés : Montreux, Villeneuve, Belmont, Grandvaux.
+- **Tracés** : ASTRA couche 3 (routes nationales, dont la N9 du Simplon) et couche 2 (H21 du col du Grand-Saint-Bernard) ;
+  col du Gothard depuis OpenStreetMap (Overpass), le H2 uranais étant absent d'ASTRA.
+- **Historique** : les observations ne sont archivées que pour les messages rattachés à un point au moment du relevé ;
+  l'historique des nouveaux points commence au premier relevé qui suit le déploiement.

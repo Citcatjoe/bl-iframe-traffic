@@ -1,0 +1,28 @@
+# Un relevé d'un projet du mini-écosystème (voir PLAN-ECOSYSTEME.md), lancé par poller@<projet>.timer.
+# Le projet <p> est cloné dans /srv/apps/<p> et fournit scripts/publish.mjs, qui écrit ses fichiers JSON publics
+# dans --out (servis par Caddy), garde son état privé éventuel dans --state (non servi), puis se termine.
+# Installation :
+#   sudo cp deploy/ecosysteme/poller@.service deploy/ecosysteme/poller@.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now poller@trafic.timer
+[Unit]
+Description=Relevé %i (mini-écosystème)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=feeds
+Group=feeds
+WorkingDirectory=/srv/apps/%i
+# Lu par systemd avant de changer d'utilisateur : le fichier peut rester lisible par root seul (chmod 600).
+EnvironmentFile=-/srv/apps/%i/.env
+ExecStart=/usr/bin/node scripts/publish.mjs --out /srv/feeds/%i --state /srv/state/%i
+TimeoutStartSec=120
+# Un projet qui déraille ne prive pas les autres de mémoire.
+MemoryMax=700M
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/feeds/%i /srv/state/%i

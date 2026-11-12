@@ -1,18 +1,28 @@
-import { MAP_ATTRIBUTION } from "../config/mapConfig";
-
-const SOURCE_CREDIT = "Source : OFROU / opentransportdata.swiss";
-const TRACKS_CREDIT = "Tracés : ASTRA";
+import { DATA_CREDIT, MAP_CREDITS } from "../config/credits";
 
 /**
- * Pied de page. Les crédits ne doivent jamais être tronqués : sur mobile, ils passent sur deux lignes.
- * Sous 964 px, l'attribution de la carte est en surimpression sur la carte (MapView).
+ * Pied de page (légende) du mode explore : tous les crédits, rien en surimpression sur la carte, fond `fill-weak` et
+ * petit retrait intérieur comme l'en-tête. Un texte qui passe à la ligne entre deux crédits (chacun d'un bloc, le point
+ * médian reste en fin de ligne) ; seule la source OFROU, trop longue pour un mobile, peut se couper.
  */
-export function Footer({ mode }) {
-  const wide = mode === "wide";
+export function Footer() {
+  const credits = [{ text: DATA_CREDIT, wrap: true }, ...MAP_CREDITS];
   return (
-    <footer className="flex flex-none flex-wrap justify-between gap-x-3 border-t border-line px-4 py-1.5 text-[10.5px] leading-[1.4] whitespace-nowrap text-ink-weak">
-      <span>{wide ? `${SOURCE_CREDIT} · ${TRACKS_CREDIT}` : SOURCE_CREDIT}</span>
-      <span>{wide ? MAP_ATTRIBUTION : TRACKS_CREDIT}</span>
+    <footer className="flex-none border-t border-line bg-surface-weak px-3 py-1.5 text-[10.5px] leading-[1.4] text-ink-weak">
+      {credits.map(({ text, href, wrap }, i) => (
+        <span key={text}>
+          <span className={wrap ? undefined : "whitespace-nowrap"}>
+            {href ? (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-inherit no-underline hover:underline">
+                {text}
+              </a>
+            ) : (
+              text
+            )}
+            {i < credits.length - 1 && " ·"}
+          </span>{" "}
+        </span>
+      ))}
     </footer>
   );
 }

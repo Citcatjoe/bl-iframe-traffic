@@ -10,11 +10,13 @@
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "node --disable-warning=ExperimentalWarning --watch-path=server --watch-path=lib server/index.mjs",
     "dev:web": "vite",
+    "dev:vps": "vite --mode vps",
     "build": "vite build",
     "start": "node --disable-warning=ExperimentalWarning server/index.mjs",
     "test": "node --test",
     "traversees": "node --env-file-if-exists=.env scripts/traversees.mjs",
-    "geo": "node scripts/build-geo.mjs"
+    "geo": "node scripts/build-geo.mjs",
+    "geo:ch": "node scripts/build-ch.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",

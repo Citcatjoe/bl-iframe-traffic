@@ -1,0 +1,24 @@
+# Site Caddy de l'API (voir PLAN-VPS.md) : HTTPS automatique, compression. Le cache d'une minute est fixé par
+# l'API elle-même (Cache-Control). Installé par deploy/deploy.sh dans /etc/caddy/sites/ ; le Caddyfile principal
+# du VPS (dépôt pegasus) importe ce dossier et définit `journal` (journal des requêtes, /var/log/caddy/trafic.log).
+
+(bl-iframe-traffic) {
+	import journal trafic
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+}
+
+trafic.citcatlab.ch {
+	import bl-iframe-traffic
+}
+
+# Ancienne adresse, gardée pendant la transition (widget compilé avant le domaine) : certificat Let's Encrypt
+# pour l'IP, valable 6 jours et renouvelé par Caddy.
+https://179.237.96.248 {
+	tls {
+		issuer acme {
+			profile shortlived
+		}
+	}
+	import bl-iframe-traffic
+}

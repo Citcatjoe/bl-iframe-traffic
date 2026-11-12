@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../config/api.js";
 import { cleanText, when } from "../format.js";
 
-/** Debug (?debug=1) : situations analysées des traversées (GET /api/messages[?all=1]). */
+/** Debug (?debug=1) : situations analysées des points suivis (GET /api/messages[?all=1]). */
 export default function DebugFeed({ point }) {
   const [all, setAll] = useState(false);
   const [data, setData] = useState(null);
@@ -10,7 +11,7 @@ export default function DebugFeed({ point }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/messages${all ? "?all=1" : ""}`)
+    fetch(apiUrl(`/api/messages${all ? "?all=1" : ""}`))
       .then(async (res) => {
         const body = await res.json();
         if (!res.ok) throw new Error(body.error?.message ?? `HTTP ${res.status}`);
@@ -49,8 +50,8 @@ export default function DebugFeed({ point }) {
           <li key={s.situation_id} className="py-2 text-xs">
             <div className="mb-0.5 flex flex-wrap gap-1.5 font-mono text-[11px] text-ink-weak">
               {s.crossings?.map((c) => (
-                <span key={c.id + c.segment + c.dir} className="rounded bg-surface-strong px-1">
-                  {c.id}/{c.segment}/{c.dir}
+                <span key={c.id + c.dir} className="rounded bg-surface-strong px-1">
+                  {c.id}/{c.dir}
                 </span>
               ))}
               {s.status !== "active" && <span className="rounded bg-surface-strong px-1">{s.status}</span>}

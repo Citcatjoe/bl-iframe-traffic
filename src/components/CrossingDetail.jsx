@@ -1,229 +1,223 @@
-import { useState } from "react";
-import { DIRS, LEVELS, closureText, dedupeUpcoming, delayText, hhmm, km, mainCounter } from "../format.js";
-import { maxQueue, speedsText, styleOf } from "../lib/levels";
+import { useMemo, useState } from "react";
+import { apiUrl } from "../config/api.js";
+import { hhmm, km, when } from "../format.js";
+import { trackClick } from "../lib/analytics.js";
+import { alternativeOf, nextClosure, reopeningText, statusLines } from "../lib/detail.js";
+import { durationText, journalEvents } from "../lib/journal.js";
+import { STATUS, lowerFirst, reasonOf } from "../lib/status.js";
 import { usePolling } from "../usePolling.js";
-import HistoryChart from "./HistoryChart.jsx";
-import { LevelChip, counterSpeed, currentMessages, dirSummary } from "./bits.jsx";
-import { Button } from "./ui/Button";
+import { Barrier, Dot } from "./PointRow.jsx";
 import { IconButton } from "./ui/IconButton";
 
 const HISTORY_REFRESH_MS = 180_000;
-const HOURS = [6, 12, 24];
+const JOURNAL_HOURS = 24;
+const JOURNAL_MAX = 12;
 
-function SectionTitle({ children }) {
-  return <h4 className="m-0 text-[11px] font-bold tracking-[0.04em] text-ink-weak uppercase">{children}</h4>;
-}
+/** Couleur du mot d'état : celle de la pastille, sauf « Fermé » en gris (la pastille porte déjà le rouge). */
+const titleColor = (level) => (level === "closed" ? "var(--color-text-weak)" : STATUS[level].color);
 
-/** Chiffre principal : km de bouchon, sinon niveau ; « clear » : vitesses mesurées s'il y en a. */
-function Hero({ c }) {
-  const st = styleOf(c.level);
-  const q = maxQueue(c);
-  const speeds = c.level === "clear" ? speedsText(c) : null;
-  const big = q != null ? `${km(q)} km` : speeds ?? LEVELS[c.level]?.short;
-  const sub = c.level === "clear" ? (speeds ? `${LEVELS.clear.label} · vitesse mesurée${speeds.includes("/") ? " ↓ / ↑" : ""}` : null) : LEVELS[c.level]?.label;
+/**
+ * Tailles de la fiche : 312 / 300 px (maquette 5a), ou `compact` en mobile, même structure resserrée : nom 20 px,
+ * lignes 14 px, pastilles et pictogrammes 14 px, métriques 22 px, marges réduites ; précisions toujours en 13 px.
+ */
+const SIZES = {
+  regular: {
+    head: "pt-5",
+    name: "text-[24px]",
+    first: "mt-[18px]",
+    line: "py-4",
+    grid: "grid-cols-[24px_minmax(0,1fr)] gap-[14px]",
+    title: "text-[15px]",
+    metrics: "pl-[38px] gap-[14px]",
+    metric: "text-[28px]",
+    mark: 19,
+    glyph: "text-[17px]",
+    barrier: 17,
+    foot: "pt-[14px] pb-4",
+  },
+  compact: {
+    head: "pt-4",
+    name: "text-[20px]",
+    first: "mt-3.5",
+    line: "py-3",
+    grid: "grid-cols-[18px_minmax(0,1fr)] gap-3",
+    title: "text-[14px]",
+    metrics: "pl-[30px] gap-3",
+    metric: "text-[22px]",
+    mark: 14,
+    glyph: "text-[14px]",
+    barrier: 14,
+    foot: "pt-3 pb-3",
+  },
+};
+
+/**
+ * Ligne d'info : pictogramme centré (colonne fixe), ligne principale en gras, précision dessous en 13 px grise.
+ * `children` : sous la ligne (métriques).
+ */
+function InfoLine({ s, icon, title, color, text, first = false, children }) {
   return (
-    <div className="flex items-center gap-3">
-      <i className={`fa-solid ${st.icon} w-[34px] text-center text-[28px]`} style={{ color: st.color }} aria-hidden="true" />
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="font-display text-[34px] leading-none font-bold">{big}</span>
-        {sub && <strong className="text-[13px] leading-[1.3]">{sub}</strong>}
-      </span>
-    </div>
-  );
-}
-
-function Direction({ dir, d, countersKnown }) {
-  const figs = [d.queue_km != null ? `${km(d.queue_km)} km` : null, delayText(d), d.since && d.level !== "clear" ? `depuis ${hhmm(d.since)}` : null].filter(Boolean);
-  const main = mainCounter(d);
-  const sp = counterSpeed(main);
-  const others = (d.counters ?? []).filter((k) => !k.main);
-  return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-line px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-[14px] font-bold">
-          <span aria-hidden="true">{DIRS[dir].arrow} </span>
-          {d.label}
+    <div className={`mx-4 border-t border-panel-line ${s.line} ${first ? s.first : ""}`}>
+      <div className={`grid items-center ${s.grid}`}>
+        <span className="flex justify-center">{icon}</span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className={`${s.title} leading-[1.3] font-bold`} style={{ color }}>
+            {title}
+          </span>
+          {text && <span className="text-[13px] leading-[1.45] text-ink-weak">{text}</span>}
         </span>
-        <LevelChip level={d.level} />
       </div>
-      {figs.length > 0 && <p className="m-0 text-[13px] leading-[1.35]">{figs.join(" · ")}</p>}
-      {countersKnown && d.counters ? (
-        <>
-          <div className="flex items-baseline gap-2">
-            <span className="font-display text-[22px] leading-none font-bold whitespace-nowrap">{sp.big}</span>
-            <span className="text-[12px] text-ink-weak">
-              {main?.name ?? "Compteur"}
-              {main?.measured_at ? ` · mesuré à ${hhmm(main.measured_at)}` : ""}
-            </span>
-          </div>
-          {sp.note && <p className="m-0 text-[12px] text-ink-weak">{sp.note}</p>}
-          {others.length > 0 && (
-            <p className="m-0 text-[12px] text-ink-weak">
-              {others.map((k) => `${k.name} ${k.speed_light != null ? `${k.speed_light} km/h` : "–"}`).join(" · ")}
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="m-0 text-[12px] text-ink-weak">Mesures des compteurs indisponibles</p>
+      {children}
+    </div>
+  );
+}
+
+/** Bouchon : temps perdu et longueur en grand, alignés sur le texte de la ligne. */
+function Metrics({ s, items }) {
+  return (
+    <div className={`mt-3 grid grid-cols-2 ${s.metrics}`}>
+      {items.map((m) => (
+        <div key={m.label} className="flex flex-col gap-1">
+          <span className={`font-display ${s.metric} leading-none font-bold`}>{m.value}</span>
+          <span className="text-[13px] leading-[1.45] text-ink-weak">{m.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Détail d'un événement du journal. Alerte : longueur, temps perdu, tronçon touché, motif (« véhicule en feu »).
+ * Fin d'alerte : ce qui s'arrête et sa durée, si son début est dans la période (« fermé pendant 27 min »).
+ */
+function eventDetail(e) {
+  if (e.level === "clear") {
+    const ended = e.prev && STATUS[e.prev] && e.lasted_ms != null ? `${lowerFirst(STATUS[e.prev].word)} pendant ${durationText(e.lasted_ms)}` : null;
+    return ["fin de l'alerte", ended];
+  }
+  return [e.queue_km != null ? `${km(e.queue_km)} km` : null, e.delay_min != null ? `${e.delay_min} min perdues` : null, e.section_fr, reasonOf([e])];
+}
+
+/** Historique du jour, replié : changements d'état par sens sur 24 h (relevés du serveur). */
+function History({ id, directions }) {
+  const [open, setOpen] = useState(false);
+  const h = usePolling(apiUrl(`/api/history?point=${id}&hours=${JOURNAL_HOURS}`), HISTORY_REFRESH_MS);
+  const events = useMemo(() => (h.data ? journalEvents(h.data.situations).slice(0, JOURNAL_MAX) : null), [h.data]);
+  const n = events?.filter((e) => !e.initial).length ?? 0;
+  const label = events
+    ? `Historique du jour · ${n === 0 ? "aucun changement" : n === 1 ? "1 changement" : `${n} changements`}`
+    : h.error
+      ? "Historique indisponible"
+      : "Historique du jour";
+  const expandable = !!events?.length;
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={expandable ? open : undefined}
+        disabled={!expandable}
+        onClick={() => {
+          if (!open) trackClick("history", { point: id });
+          setOpen(!open);
+        }}
+        className="flex w-full items-center justify-between gap-2 border-none bg-transparent p-0 text-left font-body text-[13px] leading-[1.45] text-ink-weak enabled:cursor-pointer"
+      >
+        {label}
+        {expandable && <i className={`fa-solid fa-chevron-down text-[11px] transition-transform duration-150 ${open ? "rotate-180" : ""}`} aria-hidden="true" />}
+      </button>
+      {open && expandable && (
+        <ol className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+          {events.map((e) => {
+            const st = STATUS[e.level] ?? STATUS.clear;
+            const sens = e.dirs.length === 2 ? "deux sens" : lowerFirst(directions[e.dirs[0]].label);
+            const what = eventDetail(e).filter(Boolean).join(" · ");
+            return (
+              <li key={`${e.t}${e.dirs.join("")}${e.level}`} className="grid grid-cols-[72px_minmax(0,1fr)] gap-2 text-[13px] leading-[1.45]">
+                <span className="text-ink-weak tabular-nums">{e.initial ? `≤ ${when(e.t)}` : when(e.t)}</span>
+                <span className="text-ink-weak">
+                  <strong style={{ color: st.color }}>{st.word}</strong>
+                  {` · ${sens}`}
+                  {what && ` · ${what}`}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       )}
+    </>
+  );
+}
+
+/** Barre de la fiche : retour à la liste, fermeture du panneau. */
+export function DetailBar({ onBack, onClose }) {
+  return (
+    <div className="flex h-[52px] flex-none items-center justify-between gap-2 border-b border-panel-line pr-2 pl-1.5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex h-10 cursor-pointer items-center gap-2 rounded-pill bg-transparent px-2.5 font-body text-sm font-bold text-ink transition-colors duration-150 hover:bg-panel-hover"
+      >
+        <i className="fa-solid fa-arrow-left" aria-hidden="true" />
+        Tous les points
+      </button>
+      <IconButton icon="fa-solid fa-xmark" label="Fermer le panneau" onClick={onClose} />
     </div>
   );
 }
 
-function PassStatus({ pass, countersKnown }) {
-  const sp =
-    countersKnown && pass.counters
-      ? [["↓", pass.counters.S], ["↑", pass.counters.N]].filter(([, r]) => r?.speed_light != null).map(([a, r]) => `${a} ${r.speed_light}`)
-      : [];
+/**
+ * Fiche d'un point (page droite du panneau, maquette 5a) : nom, type et tronçon, source et heure du relevé, lignes
+ * d'état (une, ou une par sens), fermeture annoncée, alternative si le point est fermé, puis historique replié (ou
+ * réouverture prévue). `crossings` : tous les points (alternative) ; `updatedAt` : relevé OFROU affiché ;
+ * `compact` : tailles réduites (mobile).
+ */
+export function CrossingDetail({ c, crossings, updatedAt, compact = false }) {
+  const s = compact ? SIZES.compact : SIZES.regular;
+  const now = Date.now();
+  const lines = statusLines(c, now);
+  const closure = nextClosure(c, now);
+  const alt = alternativeOf(c, crossings);
+  const reopening = reopeningText(c, now);
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md bg-surface-weak px-3 py-2.5">
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <strong className="text-[13px]">{pass.label}</strong>
-        {sp.length > 0 && <span className="text-[12px] text-ink-weak">{sp.join(" · ")} km/h mesurés</span>}
-      </span>
-      {pass.closed ? <LevelChip level="closed" /> : <span className="text-[12px] font-bold text-ink-weak">Aucune fermeture signalée</span>}
-    </div>
-  );
-}
-
-function History({ id, directions, small }) {
-  const [hours, setHours] = useState(12);
-  const h = usePolling(`/api/history?point=${id}&hours=${hours}`, HISTORY_REFRESH_MS);
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <SectionTitle>{hours} dernières heures</SectionTitle>
-        {!small && (
-          <div className="flex items-center gap-1" role="group" aria-label="Période">
-            {HOURS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={n === hours}
-                onClick={() => setHours(n)}
-                className={`cursor-pointer border-none bg-transparent px-1.5 py-1 font-body text-[12px] font-bold whitespace-nowrap decoration-2 underline-offset-4 ${n === hours ? "text-ink underline" : "text-ink-weak no-underline hover:text-ink"}`}
-              >
-                {n} h
-              </button>
-            ))}
-          </div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className={`flex flex-col gap-1.5 px-4 ${s.head}`}>
+        <h3 className={`m-0 font-display ${s.name} leading-[1.15] font-bold text-balance`}>{c.name}</h3>
+        <span className="flex flex-col text-[13px] leading-[1.45] text-ink-weak">
+          <span>{[c.kind, c.section].filter(Boolean).join(" · ")}</span>
+          {/* L'OFROU peut diverger d'autres sources (TCS) : le lecteur doit savoir d'où vient l'état et de quand. */}
+          {updatedAt && <span>Selon l'OFROU · {hhmm(updatedAt)}</span>}
+        </span>
+      </div>
+      {lines.map((l, i) => (
+        <InfoLine
+          key={l.key}
+          s={s}
+          first={i === 0}
+          icon={l.barrier ? <Barrier size={s.barrier} /> : <Dot color={STATUS[l.level].color} size={s.mark} />}
+          title={l.title}
+          color={titleColor(l.level)}
+          text={l.text}
+        >
+          {l.metrics.length > 0 && <Metrics s={s} items={l.metrics} />}
+        </InfoLine>
+      ))}
+      {closure && (
+        <InfoLine
+          s={s}
+          icon={<i className={`fa-regular fa-moon ${s.glyph}`} style={{ color: STATUS.closed.color }} aria-hidden="true" />}
+          title={closure.title}
+          color={STATUS.closed.color}
+          text={closure.text}
+        />
+      )}
+      {alt && <InfoLine s={s} icon={<i className={`fa-solid fa-route ${s.glyph}`} aria-hidden="true" />} title={alt.title} text={alt.text} />}
+      <div className={`mx-4 border-t border-panel-line ${s.foot}`}>
+        {reopening ? (
+          <p className="m-0 text-[13px] leading-[1.45] text-ink-weak">{reopening}</p>
+        ) : (
+          <History key={c.id} id={c.id} directions={c.directions} />
         )}
       </div>
-      {h.data?.hours === hours ? (
-        <HistoryChart data={h.data} small={small} directions={directions} />
-      ) : (
-        <p className="m-0 py-4 text-center text-[12px] text-ink-weak">{h.error ?? "Chargement de l'historique…"}</p>
-      )}
-    </section>
-  );
-}
-
-/** Fiche complète d'une traversée (page droite du panneau). */
-export function CrossingDetail({ c, countersKnown, small }) {
-  const messages = currentMessages(c);
-  const upcoming = dedupeUpcoming(c.upcoming);
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-[18px] pb-4">
-      <div className="flex flex-col gap-[5px]">
-        <span className="text-[11px] font-bold tracking-[0.04em] text-ink-brand uppercase">{c.kind}</span>
-        <h3 className="m-0 font-display text-[28px] leading-[1.1] font-bold text-balance">{c.name}</h3>
-      </div>
-      <Hero c={c} />
-      <div className="flex flex-col gap-2">
-        {["S", "N"].map((k) => (
-          <Direction key={k} dir={k} d={c.directions[k]} countersKnown={countersKnown} />
-        ))}
-      </div>
-      {c.pass && <PassStatus pass={c.pass} countersKnown={countersKnown} />}
-      {messages.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <SectionTitle>En ce moment</SectionTitle>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {messages.map((m) => (
-              <li key={m.key} className="border-l-[3px] pl-2.5 text-[13px] leading-[1.4]" style={{ borderColor: styleOf(m.level).color }}>
-                {m.text}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {upcoming.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <SectionTitle>Prochaines fermetures</SectionTitle>
-          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px] leading-[1.4]">
-            {upcoming.map((m) => (
-              <li key={m.situation_id + m.next_start}>{closureText(m)}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <History key={c.id} id={c.id} directions={c.directions} small={small} />
     </div>
-  );
-}
-
-/** Fiche compacte sous la carte (mobile, 168 px) : lisible sans interaction. */
-export function CrossingDock({ c, onClose, onDetails }) {
-  const lines = ["S", "N"].map((k) => dockLine(k, c.directions[k]));
-  return (
-    <section aria-label={`Traversée ${c.name}`} className="order-3 flex h-[168px] flex-none flex-col gap-2 border-t border-line bg-surface px-4 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-[3px]">
-          <span className="truncate text-[10.5px] font-bold tracking-[0.04em] text-ink-brand uppercase">{c.kind}</span>
-          <span className="flex min-w-0 items-center gap-2">
-            <h3 className="m-0 truncate font-display text-[20px] leading-[1.1] font-bold">{c.name}</h3>
-            <LevelChip level={c.level} />
-          </span>
-        </div>
-        <IconButton icon="fa-solid fa-xmark" color="grey" label="Fermer" onClick={onClose} />
-      </div>
-      <div className="flex min-h-0 flex-col gap-0.5 text-[12.5px] leading-[1.35]">
-        {lines.map((t) => (
-          <span key={t} className="truncate">
-            {t}
-          </span>
-        ))}
-      </div>
-      <div className="mt-auto">
-        <Button color="black" iconRight="fa-solid fa-arrow-right" onClick={onDetails}>
-          Détails
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-/** Une ligne par sens : résumé + vitesse mesurée du compteur principal. */
-function dockLine(dir, d) {
-  const v = mainCounter(d)?.speed_light;
-  const base = d.level === "clear" ? `${dirSummary(dir, d)} · ${LEVELS.clear.short}` : dirSummary(dir, d);
-  return v != null ? `${base} · ${v} km/h mesurés` : base;
-}
-
-/** Mobile sans sélection : liste compacte des traversées sous la carte. */
-export function CrossingStrip({ crossings, onSelect, onOpen }) {
-  return (
-    <section aria-label="Traversées alpines" className="order-3 flex h-[168px] flex-none flex-col border-t border-line bg-surface">
-      <div className="flex flex-none items-center justify-between py-1 pr-2 pl-4">
-        <span className="text-[11px] font-bold tracking-[0.04em] text-ink-weak uppercase">{crossings.length} traversées · par gravité</span>
-        <IconButton icon="fa-solid fa-list" label="Voir la liste détaillée" onClick={onOpen} />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {crossings.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onSelect(c.id)}
-            className="flex h-[31px] w-full cursor-pointer items-center justify-between gap-2 border-t border-line bg-transparent px-4 text-left font-body text-ink"
-          >
-            <span className="truncate font-display text-[14px] font-bold">{c.name}</span>
-            <span className="flex flex-none items-center gap-2">
-              {c.level === "clear" && speedsText(c) && <span className="text-[12px] text-ink-weak">{speedsText(c)}</span>}
-              <LevelChip level={c.level} />
-            </span>
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }

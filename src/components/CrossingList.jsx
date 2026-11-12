@@ -1,47 +1,48 @@
-import { LevelChip, crossingLines } from "./bits.jsx";
+import { STATUS, sortedRows } from "../lib/status.js";
+import { Barrier, Dot, PointRowBody, ROW_GRID } from "./PointRow.jsx";
 
-export function CountBar({ count }) {
+/** Ligne courte (mobile) : nom, puis pastille et mot du statut en fin de ligne. */
+function LineBody({ r, active }) {
+  const st = STATUS[r.level];
   return (
-    <div className="flex flex-none items-center justify-between gap-2 px-4 pt-1 pb-2">
-      <span className="text-[11px] font-bold tracking-[0.04em] whitespace-nowrap text-ink-weak uppercase">
-        {count} {count === 1 ? "traversée" : "traversées"} · par gravité
+    <>
+      <span className={`min-w-0 truncate font-display text-[14px] font-bold ${active ? "text-ink-brand" : ""}`}>{r.name}</span>
+      <span className="flex flex-none items-center gap-1.5 text-[13px] font-bold" style={{ color: st.color }}>
+        {r.closedPass ? <Barrier size={12} /> : <Dot color={st.color} />}
+        {st.word}
       </span>
-    </div>
+    </>
   );
 }
 
-/** Liste des traversées, déjà triée par gravité. */
-export function CrossingList({ crossings, sel, onSelect, onHover }) {
+/**
+ * Liste des points (mode explore), cliquable, dans l'ordre du mode compact. Lignes du mode compact (marqueur, nom,
+ * « Statut · détail · sens »), ou `short` (mobile) : une ligne de 34 px sans le détail.
+ * `empty` : message quand aucun point n'est retenu.
+ */
+export function CrossingList({ crossings, empty, sel, onSelect, onHover, short = false }) {
+  const rows = sortedRows(crossings);
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto border-t border-line">
-      {crossings.map((c) => {
-        const active = c.id === sel;
+    <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-0">
+      {rows.map((r) => {
+        const active = r.id === sel;
+        const layout = short ? "flex h-[34px] items-center justify-between gap-3" : `${ROW_GRID} py-4`;
         return (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onSelect(c.id)}
-            onMouseEnter={onHover && (() => onHover(c.id))}
-            onMouseLeave={onHover && (() => onHover(null))}
-            aria-current={active || undefined}
-            className={`flex w-full cursor-pointer flex-col gap-1 border-b border-line px-4 py-3 text-left font-body text-ink transition-colors duration-150 hover:bg-surface-weak ${active ? "bg-surface-weak" : "bg-transparent"}`}
-          >
-            <span className="flex w-full items-center justify-between gap-3">
-              <span className="flex min-w-0 flex-col gap-px">
-                <span className={`font-display text-base leading-[1.2] font-bold ${active ? "text-ink-brand" : ""}`}>{c.name}</span>
-                <span className="truncate text-[12px] leading-[1.2] text-ink-weak">{c.kind}</span>
-              </span>
-              <LevelChip level={c.level} />
-            </span>
-            {crossingLines(c).map((t) => (
-              <span key={t} className="text-[12.5px] leading-[1.35] text-ink">
-                {t}
-              </span>
-            ))}
-          </button>
+          <li key={r.id} className="border-b border-panel-line">
+            <button
+              type="button"
+              onClick={() => onSelect(r.id)}
+              onMouseEnter={onHover && (() => onHover(r.id))}
+              onMouseLeave={onHover && (() => onHover(null))}
+              aria-current={active || undefined}
+              className={`${layout} w-full cursor-pointer border-none px-4 text-left font-body text-ink transition-colors duration-150 hover:bg-panel-hover ${active ? "bg-panel-hover" : "bg-transparent"}`}
+            >
+              {short ? <LineBody r={r} active={active} /> : <PointRowBody r={r} active={active} />}
+            </button>
+          </li>
         );
       })}
-      {crossings.length === 0 && <p className="m-0 px-4 py-5 text-sm text-ink-weak">Pas encore de données.</p>}
-    </div>
+      {rows.length === 0 && <li className="px-4 py-5 text-sm text-ink-weak">{empty}</li>}
+    </ul>
   );
 }

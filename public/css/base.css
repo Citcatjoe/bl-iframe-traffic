@@ -1,13 +1,13 @@
 @font-face {
   font-family: 'BlickVariable';
-  src: url('/fonts/BlickVariable.woff2') format('woff2');
+  src: url('../fonts/BlickVariable.woff2') format('woff2');
   font-display: swap;
   font-weight: 1 999; 
 }
 
 @font-face {
   font-family: 'InterVariable';
-  src: url('/fonts/InterVariable.woff2') format('woff2');
+  src: url('../fonts/InterVariable.woff2') format('woff2');
   font-display: swap;
   font-weight: 1 999; 
   font-style: normal;
@@ -15,7 +15,7 @@
 
 @font-face {
   font-family: 'InterVariable';
-  src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
+  src: url('../fonts/InterVariable-Italic.woff2') format('woff2');
   font-display: swap;
   font-weight: 1 999; 
   font-style: italic;

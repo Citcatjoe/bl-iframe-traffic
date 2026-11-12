@@ -1,66 +1,75 @@
-import { CrossingDetail } from "./CrossingDetail.jsx";
-import { CountBar, CrossingList } from "./CrossingList.jsx";
+import { CrossingDetail, DetailBar } from "./CrossingDetail.jsx";
+import { CrossingList } from "./CrossingList.jsx";
+import { FilterBar } from "./FilterBar.jsx";
 import { IconButton } from "./ui/IconButton";
 
-const BASE = "z-[3] flex flex-col overflow-hidden bg-surface";
+const BASE = "z-[3] flex flex-col bg-panel [--scrollbar-thumb:var(--panel-thumb)]";
 
 function panelClass(mode, panelOpen) {
-  if (mode === "wide") return `${BASE} relative w-[312px] flex-none border-r border-line`;
-  if (mode === "mid") {
-    return `${BASE} absolute top-3 bottom-3 left-3 w-[300px] rounded-lg shadow-menu transition-transform duration-[220ms] ease-in-out ${panelOpen ? "translate-x-0" : "-translate-x-[calc(100%+24px)]"}`;
+  // 964 et 632 px : panneau superposé à la carte, replié par défaut, ouvert par « Liste » ou un point choisi.
+  if (mode !== "mobile") {
+    return `${BASE} overflow-hidden absolute top-3 bottom-3 left-3 w-[300px] rounded-lg shadow-menu transition-transform duration-[220ms] ease-in-out ${panelOpen ? "translate-x-0" : "-translate-x-[calc(100%+24px)]"}`;
   }
-  return `${BASE} absolute inset-0 z-[6] ${panelOpen ? "" : "hidden"}`;
+  if (panelOpen) return `${BASE} overflow-hidden absolute inset-0 z-[6]`;
+  // Barre réduite : pas d'overflow-hidden, le menu du filtre s'ouvre vers le haut, par-dessus la carte.
+  return `${BASE} relative order-2 flex-none border-t border-panel-line`;
 }
 
 /**
  * Panneau unique liste ↔ fiche. Deux pages côte à côte ; la fiche entre par la droite.
- * Mobile : plein cadre au-dessus de la carte quand `panelOpen` (sinon le dock sous la carte fait le travail).
+ * Mobile (comme bl-iframe-map-ski) : barre réduite sous la carte (filtre + bouton liste) ; plein cadre quand
+ * `panelOpen` : liste en lignes courtes, ou directement la fiche quand un point est choisi (carte ou liste).
+ * `crossings` : tous les points (comptes du filtre) ; `list` : points retenus par le filtre.
  */
-export function SidePanel({ mode, panelOpen, list, sel, shown, countersKnown, onSelect, onHover, onClose, onBack }) {
+export function SidePanel({ mode, panelOpen, crossings, updatedAt, list, filter, onFilter, sel, shown, onSelect, onHover, onOpen, onClose, onBack }) {
   const mobile = mode === "mobile";
-  const mid = mode === "mid";
-  const focused = !!sel && (!mobile || panelOpen);
+  const focused = !!sel;
+  const filterBar = (props) => <FilterBar crossings={crossings} value={filter} onChange={onFilter} {...props} />;
+
+  // Mobile : la barre reste dans le flux, même sous le panneau plein cadre (inerte alors) : la carte garde sa taille,
+  // et la vue d'ensemble recalculée pendant que le panneau est ouvert reste juste à sa fermeture.
+  const bar = mobile && (
+    <aside className={panelClass(mode, false)} inert={panelOpen} aria-hidden={panelOpen || undefined} aria-label="Points suivis">
+      {filterBar({ dropUp: true, action: <IconButton icon="fa-solid fa-list" color="grey" label="Voir tous les points" onClick={onOpen} /> })}
+    </aside>
+  );
+  if (mobile && !panelOpen) return bar;
 
   return (
-    <aside className={panelClass(mode, panelOpen)} inert={(mid || mobile) && !panelOpen} aria-label="Traversées alpines">
-      {/* overflow-clip, pas hidden : un focus dans la page cachée ne doit pas faire défiler la piste. */}
-      <div className="relative min-h-0 flex-1 overflow-clip">
-        <div
-          className="flex h-full w-[200%] transition-transform duration-[340ms] ease-[cubic-bezier(.2,.7,.2,1)]"
-          style={{ transform: focused ? "translateX(-50%)" : "translateX(0)" }}
-        >
-          {/* Page liste */}
-          <div className="flex h-full min-h-0 w-1/2 flex-col" inert={focused}>
-            <div className={`flex flex-none items-center justify-between pr-3 pl-4 ${mid || mobile ? "pt-2.5" : "pt-3.5"}`}>
-              <span className="font-display text-[19px] font-bold">Traversées alpines</span>
-              {(mid || mobile) && <IconButton icon="fa-solid fa-xmark" label="Fermer la liste" onClick={onClose} />}
+    <>
+      {bar}
+      <aside className={panelClass(mode, panelOpen)} inert={!mobile && !panelOpen} aria-label="Points suivis">
+        {/* overflow-clip, pas hidden : un focus dans la page cachée ne doit pas faire défiler la piste. */}
+        <div className="relative min-h-0 flex-1 overflow-clip">
+          <div
+            className="flex h-full w-[200%] transition-transform duration-[340ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+            style={{ transform: focused ? "translateX(-50%)" : "translateX(0)" }}
+          >
+            {/* Page liste */}
+            <div className="flex h-full min-h-0 w-1/2 flex-col" inert={focused}>
+              {filterBar({ action: <IconButton icon="fa-solid fa-xmark" label="Fermer la liste" onClick={onClose} /> })}
+              <CrossingList
+                crossings={list}
+                empty={filter ? "Aucun point ne correspond à ce filtre en ce moment." : "Pas encore de données."}
+                sel={sel}
+                onSelect={onSelect}
+                onHover={mobile ? undefined : onHover}
+                short={mobile}
+              />
             </div>
-            {/* Emplacement des filtres (recherche, groupes) si la liste s'allonge */}
-            <CountBar count={list.length} />
-            <CrossingList crossings={list} sel={sel} onSelect={onSelect} onHover={mobile ? undefined : onHover} />
-          </div>
 
-          {/* Page fiche */}
-          <div className="flex h-full min-h-0 w-1/2 flex-col" inert={!focused}>
-            {shown && (
-              <>
-                <div className="flex h-[52px] flex-none items-center justify-between gap-2 border-b border-line pr-2 pl-1.5">
-                  <button
-                    type="button"
-                    onClick={onBack}
-                    className="flex h-10 cursor-pointer items-center gap-2 rounded-pill bg-transparent px-2.5 font-body text-sm font-bold text-ink transition-colors duration-150 hover:bg-surface-weak"
-                  >
-                    <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-                    Toutes les traversées
-                  </button>
-                  {(mid || mobile) && <IconButton icon="fa-solid fa-xmark" label="Fermer le panneau" onClick={onClose} />}
-                </div>
-                <CrossingDetail c={shown} countersKnown={countersKnown} small={mobile} />
-              </>
-            )}
+            {/* Page fiche */}
+            <div className="flex h-full min-h-0 w-1/2 flex-col" inert={!focused}>
+              {shown && (
+                <>
+                  <DetailBar onBack={onBack} onClose={onClose} />
+                  <CrossingDetail c={shown} crossings={crossings} updatedAt={updatedAt} compact={mobile} />
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

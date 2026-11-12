@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  // Publié dans un sous-dossier du FTP (storytelling.blick.ch/fr/__is_embed_somewhere/bl-iframe-traffic/) :
+  // chemins relatifs à index.html.
+  base: "./",
   plugins: [react(), tailwindcss()],
   server: {
     proxy: { "/api": `http://localhost:${process.env.PORT || 8787}` },

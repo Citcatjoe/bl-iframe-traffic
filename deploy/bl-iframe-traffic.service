@@ -1,0 +1,26 @@
+# Service systemd : API + poller OFROU (voir PLAN-VPS.md). Installé par deploy/deploy.sh.
+[Unit]
+Description=bl-iframe-traffic (API, poller OFROU)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=traffic
+Group=traffic
+WorkingDirectory=/srv/bl-iframe-traffic
+# Le serveur charge lui-même .env (server/index.mjs).
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server/index.mjs
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=10
+
+# Le service n'écrit que dans data/ (archive SQLite, latest.json).
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/bl-iframe-traffic/data
+
+[Install]
+WantedBy=multi-user.target

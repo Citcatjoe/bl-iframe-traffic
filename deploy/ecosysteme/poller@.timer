@@ -1,0 +1,18 @@
+# Rythme des relevés d'un projet (voir PLAN-ECOSYSTEME.md). Par défaut toutes les 3 minutes.
+# Autre rythme pour un projet : sudo systemctl edit poller@meteo.timer, puis
+#   [Timer]
+#   OnCalendar=
+#   OnCalendar=*:0/10
+# Un relevé encore en cours n'est pas relancé : le timer attend qu'il soit terminé.
+[Unit]
+Description=Rythme des relevés %i
+
+[Timer]
+OnCalendar=*:0/3
+# Décalage fixe propre à chaque projet (0 à 45 s) : deux projets n'analysent pas leurs données au même instant.
+RandomizedDelaySec=45
+FixedRandomDelay=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

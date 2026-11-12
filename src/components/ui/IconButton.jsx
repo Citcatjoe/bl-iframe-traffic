@@ -1,9 +1,11 @@
 // Reproduction de l'`IconButton` du Blick Design System (taille sm : 36 × 36, rond).
 
 const COLORS = {
-  white: 'bg-[var(--color-static-white)] text-[var(--color-static-black)] shadow-control hover:bg-[var(--color-static-neutral-100)]',
-  grey: 'bg-surface-weak text-ink hover:bg-surface-strong',
-  transparent: 'bg-transparent text-ink hover:bg-surface-weak',
+  // Contrôles posés sur la carte : mêmes fonds que les pastilles (blanc en clair, gris très foncé en sombre).
+  map: 'bg-map-control text-ink shadow-control hover:bg-map-control-hover',
+  // Boutons du panneau liste / fiche : fonds relatifs au panneau (voir --panel-hover).
+  grey: 'bg-panel-hover text-ink hover:bg-surface-strong',
+  transparent: 'bg-transparent text-ink hover:bg-panel-hover',
 };
 
 export function IconButton({ icon, color = 'transparent', label, className = '', ...props }) {

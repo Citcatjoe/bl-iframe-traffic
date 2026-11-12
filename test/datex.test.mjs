@@ -34,6 +34,13 @@ test("nature de la situation lue dans « Sachlage »", () => {
   assert.equal(byId["287191"].roadworks, true);
 });
 
+test("motif lu dans « Raison: » du texte FR, sans les rubriques qui suivent", () => {
+  assert.equal(byId["658268"].reason_fr, "véhicule en panne poids lourd en panne");
+  assert.equal(byId["658270"].reason_fr, "accident"); // suivi de « Gestion du trafic: … »
+  assert.equal(byId["613971"].reason_fr, "travaux de construction");
+  assert.equal(byId["655961"].reason_fr, null); // fermeture sans « Raison: »
+});
+
 test("longueur de bouchon et temps perdu", () => {
   assert.equal(byId["658214"].queue_km, 4);
   assert.equal(byId["658215"].queue_km, 5);

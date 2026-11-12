@@ -2,7 +2,7 @@
 /**
  * Exploration en ligne de commande (même logique que le serveur).
  *
- *   npm run traversees                          # état des traversées alpines + messages retenus
+ *   npm run traversees                          # état des points suivis + messages retenus
  *   npm run traversees -- --json                # une ligne JSON par situation retenue
  *   npm run traversees -- --all                 # tout le flux
  *   npm run traversees -- --dump data/raw.xml   # sauve aussi le XML brut
@@ -40,7 +40,7 @@ try {
   } else {
     console.log(`Flux publié : ${publication_time} — ${situations.length} situations, ${selected.length} retenues — référence ${now}\n`);
     for (const s of selected) {
-      const refs = s.crossings.map((r) => `${r.id}/${r.segment}/${r.dir ?? "?"}`).join(" ") || "—";
+      const refs = s.crossings.map((r) => `${r.id}/${r.dir ?? "?"}`).join(" ") || "—";
       const jam = [s.queue_km != null && `${s.queue_km} km`, s.delay_min != null && `${s.delay_min} min perdues`].filter(Boolean).join(", ");
       const sched = s.schedule ? ` · ${s.schedule.kind} ${s.schedule.from}–${s.schedule.to}` : "";
       console.log(`• [${s.condition}${s.roadworks ? " · travaux" : ""}] ${refs} ${jam}${s.status === "cancelled" ? " (levé)" : ""}`);
@@ -48,12 +48,11 @@ try {
       console.log(`  ${s.start ?? "?"}${s.end ? ` → ${s.end}` : ""}${sched} · ${s.situation_id} v${s.version}\n`);
     }
     for (const c of summarizeAll(situations, now)) {
-      const dirs = Object.entries(c.directions)
-        .map(([d, x]) => `${d} ${x.level}${x.queue_km != null ? ` ${x.queue_km} km` : ""}`)
+      const dirs = Object.values(c.directions)
+        .map((x) => `${x.arrow} ${x.level}${x.queue_km != null ? ` ${x.queue_km} km` : ""}`)
         .join(" · ");
-      const pass = c.pass ? ` · ${c.pass.label} ${c.pass.closed ? "fermé" : "ouvert"}` : "";
       const next = c.upcoming[0] ? ` · prochaine fermeture ${c.upcoming[0].next_start}` : "";
-      console.log(`${c.name.padEnd(20)} ${c.level.padEnd(8)} ${dirs}${pass}${next}`);
+      console.log(`${c.name.padEnd(30)} ${c.level.padEnd(8)} ${dirs}${next}`);
     }
   }
 } catch (e) {

@@ -4,21 +4,26 @@
  * - polls          : un appel API par ligne (kind = "situations" | "counters"), réussi ou non → sert
  *                    aussi au respect de l'intervalle minimal entre redémarrages.
  * - messages       : une ligne par (situation_id, version), tout le flux, dédoublonné.
- * - observations   : versions des messages des traversées alpines présentes à chaque relevé → séries.
+ * - observations   : versions des messages des points suivis présentes à chaque relevé → séries.
  * - counter_values : mesures par détecteur à chaque relevé compteurs.
  *
  * Schéma v2 (PRAGMA user_version). Une archive v1 (prototype Gothard) est migrée : polls conservé,
  * anciennes tables renommées messages_v1 / observations_v1 (non lues).
  *
- * Migration Firestore : polls/{id}, messages/{situation_id}_{version}, observations et counter_values
- * en sous-collections de polls.
+ * Plan n8n + Firestore (PLAN-N8N-FIRESTORE.md) : cette archive n'y est pas reprise ; seuls l'état courant, les
+ * fiches et 24 h d'historique sont publiés.
  */
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { CROSSING_BY_ID, DIRECTIONS, counterReading, crossingRefs, summarizeCrossing } from "../lib/crossings.mjs";
+import { COUNTER_DETECTORS, COUNTER_SILENT_H, COUNTER_WINDOW_MIN, CROSSING_BY_ID, DIRECTIONS, counterWindow, crossingRefs, summarizeCrossing } from "../lib/crossings.mjs";
 
 const SCHEMA_VERSION = 2;
+const WINDOW_MS = COUNTER_WINDOW_MIN * 60_000;
+const SILENT_MS = COUNTER_SILENT_H * 3600_000;
+// Écart entre deux relevés compteurs au-delà duquel l'observation est interrompue (serveur arrêté, erreurs API).
+const MAX_POLL_GAP_MS = 15 * 60_000;
+const isoAt = (ms) => new Date(ms).toISOString();
 
 function migrate(db) {
   const version = db.prepare("PRAGMA user_version").get().user_version;
@@ -88,14 +93,18 @@ export function openStore(path) {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL");
   migrate(db);
+  // Hors migration (idempotent) : dernière minute avec un véhicule par détecteur, sans parcourir l'archive.
+  db.exec("CREATE INDEX IF NOT EXISTS counter_values_vehicle ON counter_values (detector_id, measured_at) WHERE flow_light > 0 OR flow_heavy > 0");
 
   // Ligne créée *avant* l'appel (ok = 0, error = 'pending') : un redémarrage pendant l'appel compte comme un appel.
   const insPoll = db.prepare(`INSERT INTO polls (kind, fetched_at, ok, error) VALUES (?, ?, 0, 'pending')`);
   const failPoll = db.prepare(`UPDATE polls SET error = ? WHERE id = ?`);
   const okPoll = db.prepare(`UPDATE polls SET ok = 1, error = NULL, publication_time = ?, n_items = ?, n_matched = ? WHERE id = ?`);
+  // `data` réécrit à chaque relevé : une version encore en cours suit les évolutions du parseur (sinon l'historique
+  // la lit telle qu'analysée à sa première apparition, parfois des semaines plus tôt).
   const upsertMsg = db.prepare(`
     INSERT INTO messages (situation_id, version, first_seen, last_seen, data) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT (situation_id, version) DO UPDATE SET last_seen = excluded.last_seen`);
+    ON CONFLICT (situation_id, version) DO UPDATE SET last_seen = excluded.last_seen, data = excluded.data`);
   const insObs = db.prepare(`INSERT OR IGNORE INTO observations (poll_id, situation_id, version) VALUES (?, ?, ?)`);
   const insCounter = db.prepare(`
     INSERT OR REPLACE INTO counter_values (poll_id, detector_id, measured_at, flow_light, speed_light, flow_heavy, speed_heavy)
@@ -108,10 +117,23 @@ export function openStore(path) {
     JOIN polls p ON p.id = o.poll_id
     JOIN messages m ON m.situation_id = o.situation_id AND m.version = o.version
     WHERE p.kind = 'situations' AND p.ok = 1 AND p.fetched_at >= ?`);
-  const countersOfPoll = db.prepare(`SELECT * FROM counter_values WHERE poll_id = ?`);
   const countersSince = db.prepare(`
     SELECT c.* FROM counter_values c JOIN polls p ON p.id = c.poll_id
     WHERE p.kind = 'counters' AND p.ok = 1 AND p.fetched_at >= ?`);
+  const lastVehicle = db.prepare(`
+    SELECT MAX(measured_at) AS t FROM counter_values WHERE detector_id = ? AND (flow_light > 0 OR flow_heavy > 0)`);
+
+  /** Relevés compteurs réussis sans trou de plus de MAX_POLL_GAP_MS entre `sinceMs` et `untilMs`. */
+  const countersContinuous = (sinceMs, untilMs) => {
+    let prev = sinceMs;
+    for (const { fetched_at } of pollsSince.all("counters", isoAt(sinceMs))) {
+      const t = Date.parse(fetched_at);
+      if (t > untilMs) break;
+      if (t - prev > MAX_POLL_GAP_MS) return false;
+      prev = t;
+    }
+    return untilMs - prev <= MAX_POLL_GAP_MS;
+  };
 
   const tx = (fn) => {
     db.exec("BEGIN");
@@ -123,8 +145,6 @@ export function openStore(path) {
       throw e;
     }
   };
-
-  const detectorMap = (rows) => Object.fromEntries(rows.map(({ poll_id: _p, detector_id, ...v }) => [detector_id, v]));
 
   return {
     /** Dernier appel tenté (réussi, échoué ou interrompu) de ce type, ISO, ou null. */
@@ -163,15 +183,23 @@ export function openStore(path) {
       });
     },
 
-    /** Dernières mesures compteurs archivées : { fetched_at, detectors } ou null. */
-    latestCounters() {
+    /**
+     * Mesures compteurs des COUNTER_WINDOW_MIN minutes précédant le dernier relevé, dernière minute avec un
+     * véhicule par détecteur, seuil « muet » : { fetched_at, ...CounterWindow } ou null.
+     */
+    counterWindow() {
       const p = lastOkPoll.get("counters");
-      return p ? { fetched_at: p.fetched_at, detectors: detectorMap(countersOfPoll.all(p.id)) } : null;
+      if (!p) return null;
+      const at = Date.parse(p.fetched_at);
+      const last_vehicle = Object.fromEntries(COUNTER_DETECTORS.map((id) => [id, lastVehicle.get(id)?.t ?? null]));
+      const silent_before = countersContinuous(at - SILENT_MS, at) ? isoAt(at - SILENT_MS) : null;
+      const since = isoAt(at - WINDOW_MS);
+      return { fetched_at: p.fetched_at, ...counterWindow(countersSince.all(since), { last_vehicle, silent_before, since }) };
     },
 
     /**
-     * Séries d'une traversée : état par relevé "situations" et par sens (même calcul que /api/now,
-     * à l'heure du relevé), vitesse et débit du compteur principal par relevé "counters".
+     * Série d'un point : état par relevé "situations" et par sens, même calcul que /api/now à l'heure du relevé
+     * (niveau, km, temps perdu annoncé ; tronçon, motif et chantier du message le plus grave).
      */
     history(crossingId, sinceIso) {
       const c = CROSSING_BY_ID[crossingId];
@@ -192,29 +220,20 @@ export function openStore(path) {
         const sum = summarizeCrossing(c, byPoll.get(id) ?? [], fetched_at);
         for (const d of DIRECTIONS) {
           const x = sum.directions[d];
-          situations.push({ t: fetched_at, dir: d, level: x.level, queue_km: x.queue_km, delay_min: x.delay_min });
+          const m = x.messages[0];
+          situations.push({
+            t: fetched_at,
+            dir: d,
+            level: x.level,
+            queue_km: x.queue_km,
+            delay_min: x.delay_min,
+            section_fr: m?.section_fr ?? null,
+            reason_fr: m?.reason_fr ?? null,
+            roadworks: m?.roadworks ?? false,
+          });
         }
       }
-
-      const mainCounter = c.counters.find((k) => k.main);
-      const counters = [];
-      if (mainCounter) {
-        const wanted = new Set([...mainCounter.S, ...mainCounter.N]);
-        const rowsByPoll = new Map();
-        for (const row of countersSince.all(sinceIso)) {
-          if (!wanted.has(row.detector_id)) continue;
-          if (!rowsByPoll.has(row.poll_id)) rowsByPoll.set(row.poll_id, []);
-          rowsByPoll.get(row.poll_id).push(row);
-        }
-        for (const { id, fetched_at } of pollsSince.all("counters", sinceIso)) {
-          const detectors = detectorMap(rowsByPoll.get(id) ?? []);
-          for (const d of DIRECTIONS) {
-            const r = counterReading(mainCounter[d], detectors);
-            counters.push({ t: fetched_at, dir: d, speed_light: r?.speed_light ?? null, flow_light: r?.flow_light ?? null, flow_heavy: r?.flow_heavy ?? null });
-          }
-        }
-      }
-      return { situations, counters, counter: mainCounter ? { site: mainCounter.site, name: mainCounter.name } : null };
+      return { situations };
     },
 
     close() {
