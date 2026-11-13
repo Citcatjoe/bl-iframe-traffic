@@ -5,11 +5,12 @@ import DebugFeed from "./components/DebugFeed.jsx";
 import { Footer } from "./components/Footer";
 import { HEADER_NARROW_MAX, Header } from "./components/Header";
 import { MapView } from "./components/MapView";
+import { MobileSheet, SHEET_TOP_GAP } from "./components/MobileSheet.jsx";
 import { SidePanel } from "./components/SidePanel";
 import { trackClick, trackImpression } from "./lib/analytics.js";
-import { applyFilter, selectPoints } from "./lib/filters.js";
+import { applyFilter, filterCount, selectPoints } from "./lib/filters.js";
 import { useTheme } from "./lib/theme.js";
-import { HEIGHT, MAX_WIDTH, modeFor, useWidth } from "./hooks/useWidth";
+import { HEIGHT, MAX_WIDTH, mobileMapHeight, modeFor, useWidth } from "./hooks/useWidth";
 import { usePolling } from "./usePolling.js";
 
 // Relecture 5 à 30 s après le prochain relevé prévu par le serveur (situations et compteurs), étalée pour que
@@ -50,10 +51,16 @@ export default function App() {
     warned.current = true;
     console.warn(`?points= : ${compactSel.unknown.join(", ")} inconnu(s) (valeurs : ${crossings.map((c) => c.id).join(", ")})`);
   }, [d, compactSel, crossings]);
-  // Filtre du mode explore (null : tout afficher) : appliqué à la liste et à la carte.
+  // Filtre du mode explore (null : tout afficher) : appliqué à la liste et à la carte, conservé d'une vue à l'autre.
   const [filter, setFilter] = useState(null);
   const visible = useMemo(() => applyFilter(crossings, filter), [crossings, filter]);
+  // Un rafraîchissement qui vide le filtre en cours ramène à « Tous les points ».
+  useEffect(() => {
+    if (filter && crossings.length && filterCount(crossings, filter) === 0) setFilter(null);
+  }, [crossings, filter]);
   const status = now.error ? "error" : d ? "ok" : "loading";
+  // Mobile : hauteur du panneau bas dans la vue d'arrivée, mesurée par MobileSheet, lue par la carte pour cadrer.
+  const sheetInset = useRef(0);
 
   const [sel, setSel] = useState(null);
   // Dernier point affiché : la fiche reste remplie pendant le glissement de retour.
@@ -66,7 +73,7 @@ export default function App() {
       setSel(id);
       setShownId(id);
       setHover(null);
-      // La fiche s'ouvre dans le panneau (superposé à la carte, ou plein cadre en mobile).
+      // La fiche s'ouvre dans le panneau (superposé à la carte, ou panneau bas en mobile).
       setPanelOpen(true);
       document.activeElement?.blur?.();
     },
@@ -82,7 +89,7 @@ export default function App() {
     else console.warn(`?point=${POINT} inconnu (valeurs : ${d.crossings.map((c) => c.id).join(", ")})`);
   }, [d, select]);
 
-  // Retour de la fiche à la liste, panneau ouvert (mobile compris).
+  // Retour de la fiche à la liste, panneau ouvert (desktop).
   const back = useCallback(() => setSel(null), []);
   const openPanel = useCallback(() => {
     setPanelOpen(true);
@@ -107,6 +114,15 @@ export default function App() {
   const closePanel = useCallback(() => {
     setPanelOpen(false);
     setSel(null);
+  }, []);
+
+  // Bouton maison de la carte : panneau fermé, « Tous les points », puis la carte revient à la vue d'ensemble.
+  const [homeKey, setHomeKey] = useState(0);
+  const goHome = useCallback(() => {
+    setPanelOpen(false);
+    setSel(null);
+    setFilter(null);
+    setHomeKey((k) => k + 1);
   }, []);
 
   const find = (id) => crossings.find((c) => c.id === id) ?? null;
@@ -140,35 +156,69 @@ export default function App() {
       >
         <Header narrow={narrow} status={status} time={d?.fetched_at} />
         {staleBanner}
-        <div className={`relative flex ${mobile ? "flex-col" : "min-h-0 flex-1 flex-row"}`}>
-          <SidePanel
-            mode={mode}
-            panelOpen={panelOpen}
-            crossings={crossings}
-            updatedAt={d?.fetched_at}
-            list={visible}
-            filter={filter}
-            onFilter={changeFilter}
-            sel={sel}
-            shown={shown}
-            onSelect={selectFromList}
-            onHover={setHover}
-            onOpen={openPanel}
-            onClose={closePanel}
-            onBack={back}
-          />
-          <MapView
-            crossings={visible}
-            sel={sel}
-            hover={hover}
-            mode={mode}
-            width={width}
-            theme={theme}
-            onHover={setHover}
-            onSelect={selectFromMap}
-            listToggle={!mobile && !panelOpen ? { label: `Liste · ${visible.length}`, onClick: openPanel } : null}
-          />
-        </div>
+        {mobile ? (
+          // Mobile : la carte occupe l'espace entre l'en-tête et les crédits, le panneau bas est posé sur elle.
+          <div className="relative flex-none" style={{ height: mobileMapHeight(width) }}>
+            <MobileSheet
+              crossings={crossings}
+              list={visible}
+              filter={filter}
+              onFilter={changeFilter}
+              sel={sel}
+              shown={shown}
+              updatedAt={d?.fetched_at}
+              listOpen={panelOpen}
+              maxHeight={mobileMapHeight(width) - SHEET_TOP_GAP}
+              insetRef={sheetInset}
+              onSelect={selectFromList}
+              onOpenList={openPanel}
+              onClose={closePanel}
+            />
+            <MapView
+              crossings={visible}
+              sel={sel}
+              hover={hover}
+              mode={mode}
+              theme={theme}
+              insetRef={sheetInset}
+              hideControls={panelOpen && !sel}
+              onHover={setHover}
+              onSelect={selectFromMap}
+              homeKey={homeKey}
+              onHome={goHome}
+            />
+          </div>
+        ) : (
+          <div className="relative flex min-h-0 flex-1 flex-row">
+            <SidePanel
+              panelOpen={panelOpen}
+              crossings={crossings}
+              updatedAt={d?.fetched_at}
+              list={visible}
+              filter={filter}
+              onFilter={changeFilter}
+              sel={sel}
+              shown={shown}
+              onSelect={selectFromList}
+              onHover={setHover}
+              onClose={closePanel}
+              onBack={back}
+            />
+            <MapView
+              crossings={visible}
+              sel={sel}
+              hover={hover}
+              mode={mode}
+              theme={theme}
+              panelOpen={panelOpen}
+              onHover={setHover}
+              onSelect={selectFromMap}
+              homeKey={homeKey}
+              onHome={goHome}
+              listToggle={!panelOpen ? { label: `Liste · ${visible.length}`, onClick: openPanel } : null}
+            />
+          </div>
+        )}
         <Footer />
       </div>
       {DEBUG && (

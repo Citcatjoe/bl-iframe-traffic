@@ -90,7 +90,7 @@ export function CompactView({ crossings, columns, twoColumns, error, seeAllUrl }
         )}
       </footer>
       {/* Pas de carte ici : seules les données OFROU sont exploitées, d'où ce seul crédit. */}
-      <p className="m-0 border-t border-line py-2 text-[12px] leading-[16px] text-ink-weak">{DATA_CREDIT}</p>
+      <p className="m-0 border-t border-line pt-[7px] pb-2 text-[10.5px] leading-[1.4] font-normal text-ink-weak">{DATA_CREDIT}</p>
     </>
   );
 }

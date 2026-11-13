@@ -70,19 +70,34 @@ seule.
 
 **Mode explore** (défaut, `?mode=explore`) : invitation à l'exploration, placée dans un article lié au sujet. Sans
 cadre ni marge extérieure ; l'en-tête a un fond `--color-fill-weak` et un petit retrait intérieur, pour que les bords
-du widget se lisent dans l'article ; la carte et les crédits vont d'un bord à l'autre (crédits en style de légende
-Blick, comme `bl-tool-timeline-r` : 12 px, graisse normale, `--color-text-weak`).
+du widget se lisent dans l'article ; la carte va d'un bord à l'autre. Crédits allégés sous la carte : 10,5 px / 1.4,
+graisse normale, `--color-text-weak`, filet haut, sans fond, texte continu (trois lignes à 360 px), liens soulignés.
 Carte MapLibre (fond OpenFreeMap Positron + relief, comme `bl-iframe-map-ski`) : tracé de chaque point suivi
 coloré selon son état, une étiquette par point sur une ligne (pastille de couleur des listes, barrière pour un col
 fermé, puis le nom court ; ni statut ni vitesse, la liste les donne ; en mobile, pastille seule), postes de comptage
-révélés au zoom (nom seul). Vue d'ensemble cadrée sur les points (de Bardonnex au San Bernardino), sur la Suisse
-entière en mobile. Panneau unique liste ↔ fiche :
+révélés au zoom (nom seul).
 
-- **Filtre** en tête de liste, menu déroulant à choix unique (« Tous les points » par défaut) : Bouchons,
-  Ralentissements, Fermetures (route fermée, avec ou sans déviation locale, ou jonction fermée), À venir (fermeture
-  annoncée dans les 24 h ou risque de bouchon), chacun avec le nombre de points concernés. Le filtre s'applique à la
-  liste, aux tracés et aux pastilles de la carte.
-- **Liste** : mêmes lignes et même ordre que le mode compact (voir plus bas), cliquables.
+**Carte : mouvements** (MapView). Elle cadre toujours son sujet dans la zone laissée libre par le panneau (mobile :
+marge basse = hauteur du panneau dans la vue d'arrivée + 16 px, mesurée avant le mouvement ; desktop : marge gauche
+= panneau ouvert ; 24 px ailleurs, plus la place des étiquettes en vue d'ensemble desktop), et ne bouge que sur un
+événement : chargement (vue d'ensemble de tous les points, sans animation) ; point choisi, ou autre point fiche
+ouverte (son tracé) ; fiche fermée (vue d'ensemble de tous les points) ; bouton maison en haut à droite (toutes
+largeurs : ferme le panneau ou la liste, remet « Tous les points », puis vue d'ensemble) ; redimensionnement (vue en
+cours, sans animation). Ni le filtre, ni l'ouverture de la liste, ni l'historique, ni un rafraîchissement des données
+ne la déplacent. Mouvements de 600 ms (le suivant interrompt le précédent), zoom plafonné à 10,5 ; aucun avec
+`prefers-reduced-motion`.
+
+Panneau liste ↔ fiche :
+
+- **Filtre** : un bouton cyclique (desktop et mobile), qui affiche le filtre en cours, son compteur et sa place dans le cycle (un point par filtre non vide, le premier pour « Tous les points ») ; chaque appui
+  passe au suivant, Tous les points → Bouchons → Ralentissements → Fermetures (route fermée, avec ou sans déviation
+  locale, ou jonction fermée) → À venir (fermeture annoncée dans les 24 h ou risque de bouchon) → Tous les points, en
+  sautant les filtres vides. Un rafraîchissement qui vide le filtre en cours ramène à « Tous les points ». Le filtre
+  s'applique à la liste, aux tracés et aux pastilles, et reste le même d'une vue à l'autre ; chaque changement est
+  annoncé (`aria-live`).
+- **Liste** : desktop, mêmes lignes et même ordre que le mode compact (voir plus bas), cliquables ; mobile, lignes de
+  44 px (nom court des pastilles, état en cours à droite : « Pas d'alerte » discret, ou l'alerte en gras rouge,
+  « Fermé ») ; même ordre que desktop (perturbations, puis points sans alerte, cols fermés en dernier).
 - **Fiche** (maquette 5a) : nom, puis « type route · tronçon suivi » et « Selon l'OFROU · HH:MM » (heure du relevé :
   l'OFROU peut diverger d'autres sources, le TCS par exemple) ; lignes d'info séparées par des filets (pastille
   ou pictogramme, ligne principale en gras, précision dessous) :
@@ -107,12 +122,12 @@ entière en mobile. Panneau unique liste ↔ fiche :
 | Largeur de l'iframe | Mise en page (hauteur) |
 |---|---|
 | ≥ 860 px (cible 964) | comme en 632 px : carte pleine largeur, panneau superposé replié par défaut, ouvert par « Liste » ou un clic sur la carte (600 px) |
-| 520–859 px (cible 632) | carte pleine largeur, panneau superposé replié par défaut, ouvert par « Liste » ou un clic sur la carte (540 px) |
-| < 520 px (mobile) | sur le modèle de `bl-iframe-map-ski` : carte en 4:3 (pleine largeur, Suisse entière, pastilles sans nom) + barre dessous (menu du filtre, ouvert vers le haut, et bouton liste) ; le bouton ouvre la liste plein cadre (filtre, une ligne de 34 px par point : nom, pastille et mot du statut) ; un point choisi (liste ou carte) ouvre directement la fiche en plein cadre, même structure en tailles réduites (nom 20 px, lignes 14 px, pastilles 14 px, métriques 22 px), « Tous les points » revient à la liste, la croix à la carte (hauteur selon le contenu, ≈ 440 px à 360 px de large, ajustée par `iframeHeightAdjustment.js`) |
+| 520–859 px (cible 632) | carte pleine largeur, panneau superposé replié par défaut, ouvert par « Liste » ou un clic sur la carte (500 px) |
+| < 520 px (mobile) | la carte occupe l'espace entre l'en-tête et les crédits (hauteur de l'ancienne mise en page : 4:3 + 53 px) ; un seul panneau bas posé dessus (maquettes 9a / 9b / 9c, coins arrondis, hauteur animée selon le contenu, au plus 44 px sous le haut de la carte) : accueil (filtre et bouton liste), liste ouverte (hauteur maximale ; la bande de carte au-dessus referme la liste ; bouton maison masqué), fiche compacte (nom, type et tronçon jamais tronqués, état avec « · selon l'OFROU, HH:MM », fermeture annoncée, historique ; ni barre « Tous les points » ni alternative, la croix ramène à l'accueil). Hauteur ajustée par `iframeHeightAdjustment.js`, ≈ 420 px à 360 px de large |
 
 **Mode compact** (`?mode=compact`, maquette Claude Design 4a / 4b) : haut de rubrique ou homepage, lisible d'un coup
 d'œil, sans carte ni interaction. Fondu dans l'article : ni cadre, ni arrondi, ni marge extérieure (en-tête et lignes
-sur fond `--color-fill-weak`, avec un petit retrait intérieur ; pied « Tout voir » sur `--color-fill-strong`, avec ses marges latérales ; source franc bord, en style de légende). 6 points au plus, en deux colonnes à partir de 480 px (lecture par colonne, les plus
+sur fond `--color-fill-weak`, avec un petit retrait intérieur ; pied « Tout voir » sur `--color-fill-strong`, avec ses marges latérales ; source franc bord, même style que les crédits du mode explore : 10,5 px, `--color-text-weak`). 6 points au plus, en deux colonnes à partir de 480 px (lecture par colonne, les plus
 graves à gauche), une colonne en dessous. Chaque ligne : pastille de couleur (19 px), nom, puis « **Statut** · détail ·
 sens », le mot du statut dans la couleur de la pastille. Exception : un col fermé (perturbation au long cours, pas un
 état du trafic qui change d'une minute à l'autre) est signalé par une barrière à la place de la pastille, dans le même rouge. Aucune vitesse ni
@@ -131,8 +146,10 @@ les axes à gauche, les douanes à droite :
 | Risque de bouchon, Jonction fermée | jaune #E0A800 | même schéma |
 | Pas d'alerte | `--color-success` | `Pas d'alerte · deux sens` (aucun message : on ne dit pas « fluide »), ou `Pas d'alerte · ferme ce soir à 22:00[, déviation]` (les messages FR ne décrivent qu'une déviation locale : la fiche le précise) |
 
-Tri : bouchons (temps perdu, puis longueur), ralentis, fermés, déviations, risques, jonctions, puis « Pas d'alerte »
-(fermeture annoncée dans les 24 h d'abord) ; les cols fermés passent après tout le reste. Au-delà de 6 points, le pied
+Tri : bouchons, ralentis, fermés, déviations, risques, jonctions, puis « Pas d'alerte » ; à statut égal, par type de
+point (axes routiers, douanes, tunnels, cols), puis bouchons par temps perdu et longueur, « Pas d'alerte » avec
+fermeture annoncée dans les 24 h d'abord ; les cols fermés passent après tout le reste. Même ordre dans la liste du
+mode explore (desktop et mobile). Au-delà de 6 points, le pied
 résume le reste : « N autres fermetures ce soir » (fermeture annoncée avant 06:00 le lendemain), « N autres points
 sans alerte », « N cols fermés », et « N autres points perturbés » si plus de 6 points sont perturbés. Sous 480 px,
 pastille (ou barrière) et nombre seuls, le libellé restant lu par les lecteurs d'écran. « Tout voir » à
@@ -162,13 +179,15 @@ remplacé et nos couches rajoutées. Les couleurs de statut (pastilles, tracés)
 clair. Test : `http://localhost:5173/#theme=dark`.
 
 **Suivi d'audience.** `src/lib/analytics.js` pousse dans `window.blickDataLayer` (posé dans `index.html`, relayé à la
-page par `iframeHeightAdjustment.js` en message `TRACK`), selon la convention des widgets Blick :
+page par `iframeHeightAdjustment.js` en message `TRACK`), selon la convention des widgets Blick. Référence complète
+(message reçu par la page, déclencheurs, ce qui n'est pas envoyé, comptage, emplacements dans le code, vérification) :
+[SUIVI-AUDIENCE.md](SUIVI-AUDIENCE.md). Résumé :
 
 | `event` | `iframe_id` | Données | Quand |
 |---|---|---|---|
 | `iframe_impression` | `iframe_impression` | | chargement du widget |
 | `iframe_click` | `iframe_point_clicked` | `point`, `source` (`list` / `map`) | choix d'un point (pas la présélection `?point=`) |
-| `iframe_click` | `iframe_filter_clicked` | `filter` (`jam`, `slow`, `closed`, `soon`, `all`) | choix dans le menu du filtre |
+| `iframe_click` | `iframe_filter_clicked` | `filter` (`jam`, `slow`, `closed`, `soon`, `all`) : filtre atteint | appui sur le bouton de filtre cyclique (pas le retour automatique à « Tous les points » quand un rafraîchissement vide le filtre) |
 | `iframe_click` | `iframe_list_clicked` | | ouverture de la liste (bouton « Liste », ou bouton liste en mobile) |
 | `iframe_click` | `iframe_history_clicked` | `point` | dépliage de l'historique d'une fiche |
 | `iframe_click` | `iframe_see_all_clicked` | | « Tout voir » du mode compact (si `seeAllUrl`) |

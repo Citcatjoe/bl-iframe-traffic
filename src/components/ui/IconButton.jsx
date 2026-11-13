@@ -3,8 +3,7 @@
 const COLORS = {
   // Contrôles posés sur la carte : mêmes fonds que les pastilles (blanc en clair, gris très foncé en sombre).
   map: 'bg-map-control text-ink shadow-control hover:bg-map-control-hover',
-  // Boutons du panneau liste / fiche : fonds relatifs au panneau (voir --panel-field, --panel-hover).
-  grey: 'bg-panel-field text-ink hover:bg-panel-hover',
+  // Boutons du panneau liste / fiche : survol relatif au panneau (voir --panel-hover).
   transparent: 'bg-transparent text-ink hover:bg-panel-hover',
 };
 

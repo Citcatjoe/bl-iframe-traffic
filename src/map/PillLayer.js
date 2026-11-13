@@ -1,11 +1,12 @@
-import { HYSTERESIS, NARROW_ZOOM_OFFSET } from "../config/mapConfig";
+import { HYSTERESIS, NARROW_ZOOM_OFFSET, PILL_FADE_MS } from "../config/mapConfig";
 import { drawPill, isPillImageId, PILL_FONTS, pillImageId, pillSize } from "../lib/pill";
 import { placePills } from "../lib/placePills";
 
 const SOURCE = "pills";
 const LAYER = "pills";
 const MOVE_THROTTLE_MS = 60;
-const FADE_MS = 200;
+// Délai avant de masquer une pastille évincée par la collision (déplacement de la carte : évite le clignotement).
+// Une pastille retirée par le filtre s'efface tout de suite, en même temps que la pagination du filtre.
 const HIDE_DELAY_MS = 220;
 const COLLISION_PAD = 6;
 
@@ -149,8 +150,9 @@ export class PillLayer {
       seen.add(it.id);
     }
     this.firstPlaced = placed.length > 0;
+    const itemIds = new Set(items.map((it) => it.id));
     this.anim.forEach((e, id) => {
-      if (!seen.has(id) && e.gone == null) e.gone = now;
+      if (!seen.has(id) && e.gone == null) e.gone = itemIds.has(id) ? now : now - HIDE_DELAY_MS;
     });
     this.startAnim();
   }
@@ -170,7 +172,7 @@ export class PillLayer {
           else busy = true;
         }
         if (e.o !== e.target) {
-          const d = dt / FADE_MS;
+          const d = dt / PILL_FADE_MS;
           e.o = e.target > e.o ? Math.min(1, e.o + d) : Math.max(0, e.o - d);
           busy = true;
         }

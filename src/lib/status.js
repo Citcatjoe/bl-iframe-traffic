@@ -99,9 +99,17 @@ export function rowOf(c) {
   return row;
 }
 
+/** Ordre des types de points à statut égal : axes routiers, douanes (sur les axes), tunnels, cols. */
+const TYPE_ORDER = ["axe", "douane", "tunnel", "col"];
+const typeRank = (r) => {
+  const i = TYPE_ORDER.indexOf(r.c.type);
+  return i < 0 ? TYPE_ORDER.length : i;
+};
+
 /**
  * Lignes triées : cols fermés en dernier (fermeture au long cours, pas une info « coup d'œil ») ; sinon statut
- * (ORDER), bouchons par temps perdu puis longueur, « Pas d'alerte » avec fermeture annoncée d'abord.
+ * (ORDER), puis type de point (axes, douanes, tunnels, cols), puis bouchons par temps perdu et longueur, « Pas
+ * d'alerte » avec fermeture annoncée d'abord.
  */
 export function sortedRows(crossings) {
   return crossings
@@ -110,6 +118,7 @@ export function sortedRows(crossings) {
       (a, b) =>
         a.closedPass - b.closedPass ||
         ORDER.indexOf(a.level) - ORDER.indexOf(b.level) ||
+        typeRank(a) - typeRank(b) ||
         b.delay - a.delay ||
         b.queue - a.queue ||
         (a.next ? (b.next ? a.next.localeCompare(b.next) : -1) : b.next ? 1 : 0) ||

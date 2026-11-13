@@ -9,8 +9,9 @@ const hasLevel = (c, levels) =>
 export const FILTERS = [
   { id: "jam", label: "Bouchons", color: STATUS.jam.color, test: (c) => hasLevel(c, ["jam"]) },
   { id: "slow", label: "Ralentissements", color: STATUS.slow.color, test: (c) => hasLevel(c, ["slow"]) },
-  // Route fermée (avec ou sans déviation locale) ou jonction fermée : tout ce qui empêche de passer par là.
-  { id: "closed", label: "Fermetures", color: STATUS.closed.color, test: (c) => hasLevel(c, ["closed", "detour", "access"]) },
+  // Route fermée (avec ou sans déviation locale) ou jonction fermée : tout ce qui empêche de passer par là. Repère :
+  // la barrière des cols fermés.
+  { id: "closed", label: "Fermetures", barrier: true, test: (c) => hasLevel(c, ["closed", "detour", "access"]) },
   // Fermeture annoncée dans les 24 h ou risque de bouchon.
   { id: "soon", label: "À venir", icon: "fa-clock", test: (c) => hasLevel(c, ["expected"]) || dedupeUpcoming(c.upcoming).some(within24h) },
 ];
@@ -19,6 +20,26 @@ export const FILTERS = [
 export function applyFilter(crossings, id) {
   const f = FILTERS.find((x) => x.id === id);
   return f ? crossings.filter(f.test) : crossings;
+}
+
+/** Nombre de points retenus par un filtre (`null` : tous). */
+export const filterCount = (crossings, id) => applyFilter(crossings, id).length;
+
+/** Filtres du cycle, dans l'ordre, sans les filtres vides ; « Tous les points » (`null`) toujours en premier. */
+export const filterCycle = (crossings) => [null, ...FILTERS.map((f) => f.id).filter((id) => filterCount(crossings, id) > 0)];
+
+/**
+ * Filtre suivant du bouton cyclique : Tous → Bouchons → Ralentissements → Fermetures → À venir → Tous, en sautant
+ * les filtres vides. Tous les filtres vides : reste sur « Tous les points » (`null`).
+ */
+export function nextFilter(crossings, id) {
+  const cycle = [null, ...FILTERS.map((f) => f.id)];
+  const from = Math.max(0, cycle.indexOf(id));
+  for (let k = 1; k < cycle.length; k++) {
+    const next = cycle[(from + k) % cycle.length];
+    if (next === null || filterCount(crossings, next) > 0) return next;
+  }
+  return null;
 }
 
 /**

@@ -58,35 +58,33 @@ export const CH_OUTLINE_URL = "data/ch.geojson"; // filtre `within` des localit�
 export const CH_PRECISE_URL = "data/ch-precise.geojson"; // trame extérieure
 export const GEO_URL = "data/traffic-geo.json"; // tracés et compteurs (scripts/build-geo.mjs)
 
-/** Emprise des points suivis (de Bardonnex au San Bernardino, d'Erstfeld au Grand-Saint-Bernard). */
-const TRACKED_BOUNDS = [[6.05, 45.85], [9.25, 46.85]];
-/** Emprise de la Suisse. */
-const CH_BOUNDS = [[5.96, 45.82], [10.49, 47.81]];
-export const MAX_BOUNDS = [[4.5, 45.2], [11.8, 48.4]];
+/** Emprise des points suivis (de Bardonnex au San Bernardino, d'Erstfeld au Grand-Saint-Bernard) : repli du cadrage. */
+export const TRACKED_BOUNDS = [[6.05, 45.85], [9.25, 46.85]];
+// Élargie au sud et à l'ouest : la vue d'ensemble décale la Suisse hors du panneau (panneau bas en mobile : vers le
+// haut ; panneau latéral ouvert en desktop : vers la droite). La carte doit pouvoir montrer l'Italie du Nord sous elle
+// et la France à sa gauche, sinon la limite bloque le cadrage et les points restent sous le panneau.
+export const MAX_BOUNDS = [[2.0, 44.0], [11.8, 48.4]];
 
 /**
- * Vue d'ensemble par mode. 964 / 632 px : emprise des points, marges latérales larges (les étiquettes portent le nom,
- * centrées sur des points en bord d'emprise), marge haute pour le bouton « Liste ». Mobile : étiquettes réduites à la
- * pastille, la Suisse entière centrée.
+ * Marges de cadrage (MapView, viewPadding), en px. `edge` : côtés libres. `pill` : en plus, autour des points du
+ * filtre en mobile (pastilles de 22 px centrées sur les points en bord d'emprise). `sheetGap` : au-dessus du panneau
+ * bas mobile ; `minUsable` : hauteur de carte gardée au minimum au-dessus de lui. `minWidth` : largeur de carte gardée
+ * au minimum à droite du panneau latéral. `panel` : panneau latéral ouvert (12 + 300 + 24). `labels` : vue d'ensemble
+ * desktop, étiquettes centrées sur des points en bord d'emprise. `listButton` : bouton « Liste » en haut à gauche,
+ * panneau replié.
  */
-export const OVERVIEW = {
-  wide: { bounds: TRACKED_BOUNDS, padding: { top: 56, bottom: 30, left: 90, right: 110 } },
-  mid: { bounds: TRACKED_BOUNDS, padding: { top: 56, bottom: 24, left: 90, right: 110 } },
-  mobile: { bounds: CH_BOUNDS, padding: { top: 12, bottom: 12, left: 12, right: 12 } },
-};
-
-/** Cadrage d'un point suivi (tracé + compteurs) ; en 964 et 632 px, le panneau de 300 px couvre la gauche. */
-export const FOCUS_PADDING = {
-  wide: { top: 70, bottom: 60, left: 336, right: 70 },
-  mid: { top: 60, bottom: 40, left: 336, right: 60 },
-  mobile: { top: 40, bottom: 30, left: 30, right: 56 },
-};
+export const FRAME = { edge: 24, pill: 14, sheetGap: 16, minUsable: 60, minWidth: 260, panel: 336, labels: { left: 90, right: 110 }, listButton: 56 };
+/** Durée des mouvements de la carte (cadrages), en ms ; aucune si l'utilisateur préfère réduire les animations. */
+export const FRAME_MS = 600;
 export const FOCUS_MAX_ZOOM = 10.5;
+/**
+ * Fondu des pastilles (apparition, disparition), en ms : aussi la durée de la transition de la pagination du filtre
+ * (CycleFilter), pour qu'un changement de filtre anime les deux ensemble.
+ */
+export const PILL_FADE_MS = 200;
 
 /** Gestes coopératifs (Ctrl/⌘ + molette, 2 doigts) : la carte ne capture pas le scroll de l'article. */
 export const COOPERATIVE_GESTURES = true;
-
-export const FLY = { speed: 1.1, curve: 1.5 };
 
 /** Révélation par zoom : les points suivis sont toujours visibles ; compteurs secondaires en zoomant. */
 export const COUNTER_MIN_ZOOM = 8.5;

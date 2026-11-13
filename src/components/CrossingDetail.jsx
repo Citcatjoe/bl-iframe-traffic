@@ -8,6 +8,7 @@ import { STATUS, lowerFirst, reasonOf } from "../lib/status.js";
 import { usePolling } from "../usePolling.js";
 import { Barrier, Dot } from "./PointRow.jsx";
 import { IconButton } from "./ui/IconButton";
+import { RoundButton } from "./ui/RoundButton.jsx";
 
 const HISTORY_REFRESH_MS = 180_000;
 const JOURNAL_HOURS = 24;
@@ -16,40 +17,40 @@ const JOURNAL_MAX = 12;
 /** Couleur du mot d'état : celle de la pastille, sauf « Fermé » en gris (la pastille porte déjà le rouge). */
 const titleColor = (level) => (level === "closed" ? "var(--color-text-weak)" : STATUS[level].color);
 
-/**
- * Tailles de la fiche : 312 / 300 px (maquette 5a), ou `compact` en mobile, même structure resserrée : nom 20 px,
- * lignes 14 px, pastilles et pictogrammes 14 px, métriques 22 px, marges réduites ; précisions toujours en 13 px.
- */
-const SIZES = {
-  regular: {
-    head: "pt-5",
-    name: "text-[24px]",
-    first: "mt-[18px]",
-    line: "py-4",
-    grid: "grid-cols-[24px_minmax(0,1fr)] gap-[14px]",
-    title: "text-[15px]",
-    metrics: "pl-[38px] gap-[14px]",
-    metric: "text-[28px]",
-    mark: 19,
-    glyph: "text-[17px]",
-    barrier: 17,
-    foot: "pt-[14px] pb-4",
-  },
-  compact: {
-    head: "pt-4",
-    name: "text-[20px]",
-    first: "mt-3.5",
-    line: "py-3",
-    grid: "grid-cols-[18px_minmax(0,1fr)] gap-3",
-    title: "text-[14px]",
-    metrics: "pl-[30px] gap-3",
-    metric: "text-[22px]",
-    mark: 14,
-    glyph: "text-[14px]",
-    barrier: 14,
-    foot: "pt-3 pb-3",
-  },
+/** Tailles de la fiche desktop (panneau de 300 px, maquette 5a). */
+const S = {
+  head: "pt-5",
+  name: "text-[24px]",
+  first: "mt-[18px]",
+  line: "py-4",
+  grid: "grid-cols-[24px_minmax(0,1fr)] gap-[14px]",
+  title: "text-[15px]",
+  metrics: "pl-[38px] gap-[14px]",
+  metric: "text-[28px]",
+  mark: 19,
+  glyph: "text-[17px]",
+  barrier: 17,
+  foot: "pt-[14px] pb-4",
 };
+/** Métriques d'un bouchon dans la fiche mobile (panneau bas). */
+const S_MOBILE = { metrics: "pl-7 gap-3", metric: "text-[22px]" };
+
+/**
+ * Texte en segments séparés par « · » : passe à la ligne entre deux segments, jamais au milieu, sauf un segment plus
+ * long qu'une ligne (bloc en ligne : il ne déborde pas, il se coupe alors lui-même).
+ */
+function Segments({ parts }) {
+  const list = parts.filter(Boolean);
+  return list.map((p, i) => (
+    <span key={i}>
+      <span className="inline-block max-w-full">
+        {p}
+        {i < list.length - 1 && " ·"}
+      </span>{" "}
+    </span>
+  ));
+}
+const segmentsOf = (text) => (text ? text.split(" · ") : []);
 
 /**
  * Ligne d'info : pictogramme centré (colonne fixe), ligne principale en gras, précision dessous en 13 px grise.
@@ -98,8 +99,11 @@ function eventDetail(e) {
   return [e.queue_km != null ? `${km(e.queue_km)} km` : null, e.delay_min != null ? `${e.delay_min} min perdues` : null, e.section_fr, reasonOf([e])];
 }
 
-/** Historique du jour, replié : changements d'état par sens sur 24 h (relevés du serveur). */
-function History({ id, directions }) {
+/**
+ * Historique du jour, replié : changements d'état par sens sur 24 h (relevés du serveur). `mobile` : bouton pleine
+ * largeur de 36 px au moins, 12,5 px, chevron 16 px.
+ */
+function History({ id, directions, mobile = false }) {
   const [open, setOpen] = useState(false);
   const h = usePolling(apiUrl(`/api/history?point=${id}&hours=${JOURNAL_HOURS}`), HISTORY_REFRESH_MS);
   const events = useMemo(() => (h.data ? journalEvents(h.data.situations).slice(0, JOURNAL_MAX) : null), [h.data]);
@@ -120,13 +124,13 @@ function History({ id, directions }) {
           if (!open) trackClick("history", { point: id });
           setOpen(!open);
         }}
-        className="flex w-full items-center justify-between gap-2 border-none bg-transparent p-0 text-left font-body text-[13px] leading-[1.45] text-ink-weak enabled:cursor-pointer"
+        className={`flex w-full items-center justify-between gap-2 border-none bg-transparent p-0 text-left font-body text-ink-weak enabled:cursor-pointer ${mobile ? "min-h-9 text-[12.5px] leading-[1.35]" : "text-[13px] leading-[1.45]"}`}
       >
         {label}
-        {expandable && <i className={`fa-solid fa-chevron-down text-[11px] transition-transform duration-150 ${open ? "rotate-180" : ""}`} aria-hidden="true" />}
+        {expandable && <i className={`fa-solid fa-chevron-down ${mobile ? "text-[16px]" : "text-[11px]"} transition-transform duration-150 ${open ? "rotate-180" : ""}`} aria-hidden="true" />}
       </button>
       {open && expandable && (
-        <ol className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+        <ol className={`m-0 flex list-none flex-col gap-2 p-0 ${mobile ? "mt-1 pb-2.5" : "mt-3"}`}>
           {events.map((e) => {
             const st = STATUS[e.level] ?? STATUS.clear;
             const sens = e.dirs.length === 2 ? "deux sens" : lowerFirst(directions[e.dirs[0]].label);
@@ -166,13 +170,12 @@ export function DetailBar({ onBack, onClose }) {
 }
 
 /**
- * Fiche d'un point (page droite du panneau, maquette 5a) : nom, type et tronçon, source et heure du relevé, lignes
- * d'état (une, ou une par sens), fermeture annoncée, alternative si le point est fermé, puis historique replié (ou
- * réouverture prévue). `crossings` : tous les points (alternative) ; `updatedAt` : relevé OFROU affiché ;
- * `compact` : tailles réduites (mobile).
+ * Fiche d'un point (page droite du panneau desktop, maquette 5a) : nom, type et tronçon, source et heure du relevé,
+ * lignes d'état (une, ou une par sens), fermeture annoncée, alternative si le point est fermé, puis historique replié
+ * (ou réouverture prévue). `crossings` : tous les points (alternative) ; `updatedAt` : relevé OFROU affiché.
  */
-export function CrossingDetail({ c, crossings, updatedAt, compact = false }) {
-  const s = compact ? SIZES.compact : SIZES.regular;
+export function CrossingDetail({ c, crossings, updatedAt }) {
+  const s = S;
   const now = Date.now();
   const lines = statusLines(c, now);
   const closure = nextClosure(c, now);
@@ -216,6 +219,84 @@ export function CrossingDetail({ c, crossings, updatedAt, compact = false }) {
           <p className="m-0 text-[13px] leading-[1.45] text-ink-weak">{reopening}</p>
         ) : (
           <History key={c.id} id={c.id} directions={c.directions} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ligne de la fiche mobile : filet haut, colonne icône de 18 px, libellé 14 px gras (et `aside` sur la même ligne),
+ * précision dessous en 12,5 px, en segments insécables.
+ */
+function MobileLine({ icon, title, color, aside, text, children }) {
+  return (
+    <div className="flex gap-2.5 border-t border-panel-line py-[9px]">
+      <span className="flex h-[18px] w-[18px] flex-none items-center justify-center">{icon}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[14px] leading-[18px]">
+          <strong style={{ color }}>{title}</strong>
+          {aside && <span className="text-[12.5px] text-ink-weak"> {aside}</span>}
+        </span>
+        {text && (
+          <span className="text-[12.5px] leading-[1.35] text-ink-weak">
+            <Segments parts={segmentsOf(text)} />
+          </span>
+        )}
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Fiche d'un point dans le panneau bas mobile (maquette 9c), compacte pour laisser le tracé visible au-dessus : nom,
+ * type et tronçon (jamais tronqués), bouton fermer ; état avec « · selon l'OFROU, HH:MM » sur la première ligne ;
+ * fermeture annoncée ; historique replié (ou réouverture prévue). Pas d'alternative ici (fiche desktop seulement) :
+ * le panneau reste compact.
+ */
+export function MobileDetail({ c, updatedAt, onClose }) {
+  const now = Date.now();
+  const lines = statusLines(c, now);
+  const closure = nextClosure(c, now);
+  const reopening = reopeningText(c, now);
+  return (
+    <div className="flex flex-col px-4 pt-3 pb-1">
+      <div className="flex items-start gap-2.5 pb-2.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h3 className="m-0 font-display text-[22px] leading-[1.1] font-bold">{c.name}</h3>
+          <span className="text-[12.5px] leading-[1.35] text-ink-weak">
+            <Segments parts={[c.kind, c.section]} />
+          </span>
+        </div>
+        <RoundButton icon="fa-solid fa-xmark" label="Fermer la fiche" size={32} onClick={onClose} />
+      </div>
+      {lines.map((l, i) => (
+        <MobileLine
+          key={l.key}
+          icon={l.barrier ? <Barrier size={14} /> : <Dot color={STATUS[l.level].color} size={10} />}
+          title={l.title}
+          color={titleColor(l.level)}
+          // L'OFROU peut diverger d'autres sources (TCS) : le lecteur doit savoir d'où vient l'état et de quand.
+          aside={i === 0 && updatedAt ? `· selon l'OFROU, ${hhmm(updatedAt)}` : null}
+          text={l.text}
+        >
+          {l.metrics.length > 0 && <Metrics s={S_MOBILE} items={l.metrics} />}
+        </MobileLine>
+      ))}
+      {closure && (
+        <MobileLine
+          icon={<i className="fa-regular fa-moon text-[16px] leading-none" style={{ color: STATUS.closed.color }} aria-hidden="true" />}
+          title={closure.title}
+          color={STATUS.closed.color}
+          text={closure.text}
+        />
+      )}
+      <div className="border-t border-panel-line">
+        {reopening ? (
+          <p className="m-0 py-[9px] text-[12.5px] leading-[1.35] text-ink-weak">{reopening}</p>
+        ) : (
+          <History key={c.id} id={c.id} directions={c.directions} mobile />
         )}
       </div>
     </div>

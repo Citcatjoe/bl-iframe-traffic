@@ -41,8 +41,7 @@
   --color-panel: var(--panel-bg);
   --color-panel-hover: var(--panel-hover);
   --color-panel-line: var(--panel-line);
-  --color-panel-field: var(--panel-field);
-  --color-menu-strong-hover: var(--menu-strong-hover);
+  --color-sheet-line: var(--sheet-line);
 }
 
 @layer base {
@@ -52,7 +51,7 @@
     --is-dark-theme: ;
     /* Fond de la carte avant ses tuiles : hors design system, même bascule que base.css (Positron / Dark). */
     --map-bg: var(--is-light-theme, #eeedea) var(--is-dark-theme, #1e1a1a);
-    /* Boutons posés sur la carte (zoom, recentrer) : fonds des pastilles de la carte (MAP_THEMES.pill). */
+    /* Boutons posés sur la carte (zoom, maison) : fonds des pastilles de la carte (MAP_THEMES.pill). */
     --map-control: var(--is-light-theme, var(--color-white)) var(--is-dark-theme, var(--color-grey-800));
     --map-control-hover: var(--is-light-theme, var(--color-grey-100)) var(--is-dark-theme, var(--color-grey-700));
     /* Rouge « Fermé » (pastilles, barrière, tracés, fermeture annoncée) : red-900 en clair ; en sombre, un rouge
@@ -67,21 +66,10 @@
     --panel-thumb: var(--is-light-theme, var(--color-fill-strong)) var(--is-dark-theme, var(--color-grey-600));
     /* Pouce des barres de défilement ; le panneau le redéfinit (--panel-thumb). */
     --scrollbar-thumb: var(--color-fill-strong);
-    /* Champs et boutons gris du panneau (bouton liste) : ici le fond du survol. */
-    --panel-field: var(--is-light-theme, var(--color-fill-weak)) var(--is-dark-theme, var(--color-grey-700));
-    /* Option survolée du menu du filtre sur fond `fill-strong` (mobile) : un cran au-dessus. */
-    --menu-strong-hover: var(--is-light-theme, var(--color-grey-300)) var(--is-dark-theme, var(--color-grey-700));
+    /* Filet entre les lignes de la liste du panneau bas mobile : grey-200 en clair, un cran au-dessus du panneau en sombre. */
+    --sheet-line: var(--is-light-theme, var(--color-grey-200)) var(--is-dark-theme, var(--color-grey-700));
     /* Contrôles natifs (barres de défilement…) au thème de la page. */
     color-scheme: var(--is-light-theme, light) var(--is-dark-theme, dark);
-  }
-  /* Mobile (comme bl-iframe-map-ski) : barre du filtre et liste / fiche plein cadre sur `fill-weak`, pour les détacher
-     des crédits en dessous ; survol et ligne choisie sur `fill-strong` ; bouton liste sur `fill-default`,
-     qui ressort du gris. */
-  .panel-mobile {
-    --panel-bg: var(--color-fill-weak);
-    --panel-hover: var(--color-fill-strong);
-    --panel-line: var(--color-stroke-weak);
-    --panel-field: var(--color-fill-default);
   }
   /*
    * Barres de défilement fines et discrètes (liste, fiche, menu) : pouce `--scrollbar-thumb`, sans rail ni flèches.

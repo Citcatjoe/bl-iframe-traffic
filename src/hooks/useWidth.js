@@ -12,11 +12,16 @@ export const MAX_WIDTH = 964;
 export const modeFor = (w) => (w >= 860 ? 'wide' : w >= 520 ? 'mid' : 'mobile');
 
 /**
- * Hauteur fixe de l'iframe en 964 et 632 px. Mobile : pas de hauteur fixe ; carte en 4:3 (la Suisse, ≈ 1,6:1, y garde
- * un peu d'air dessus et dessous) + barre de filtre sous la carte + crédits, hauteur ajustée par iframeHeightAdjustment.js
- * comme le mode compact.
+ * Hauteur fixe de l'iframe en 964 et 632 px. Mobile : pas de hauteur fixe ; zone carte (mobileMapHeight) + crédits,
+ * hauteur ajustée par iframeHeightAdjustment.js comme le mode compact.
  */
-export const HEIGHT = { wide: 600, mid: 540 };
+export const HEIGHT = { wide: 600, mid: 500 };
+
+/**
+ * Mobile : hauteur de la zone carte, entre l'en-tête et les crédits, panneau bas compris (posé sur la carte). Garde la
+ * hauteur de l'ancienne mise en page : carte en 4:3 + barre de filtre de 53 px dessous.
+ */
+export const mobileMapHeight = (width) => Math.round((width * 3) / 4) + 53;
 
 /** Largeur observée d'un élément (celle de l'iframe, plafonnée à MAX_WIDTH). */
 export function useWidth(ref) {
