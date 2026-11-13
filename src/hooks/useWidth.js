@@ -12,10 +12,11 @@ export const MAX_WIDTH = 964;
 export const modeFor = (w) => (w >= 860 ? 'wide' : w >= 520 ? 'mid' : 'mobile');
 
 /**
- * Hauteur fixe de l'iframe par mode (le mobile ne se redimensionne pas). Mobile : carte ≈ 235 px (la Suisse entière à
- * 360 px) + barre de filtre sous la carte, sur le modèle de bl-iframe-map-ski, + crédits sur quatre lignes.
+ * Hauteur fixe de l'iframe en 964 et 632 px. Mobile : pas de hauteur fixe ; carte en 4:3 (la Suisse, ≈ 1,6:1, y garde
+ * un peu d'air dessus et dessous) + barre de filtre sous la carte + crédits, hauteur ajustée par iframeHeightAdjustment.js
+ * comme le mode compact.
  */
-export const HEIGHT = { wide: 600, mid: 540, mobile: 400 };
+export const HEIGHT = { wide: 600, mid: 540 };
 
 /** Largeur observée d'un élément (celle de l'iframe, plafonnée à MAX_WIDTH). */
 export function useWidth(ref) {

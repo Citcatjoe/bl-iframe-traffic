@@ -64,13 +64,14 @@ https://storytelling.blick.ch/fr/__is_embed_somewhere/bl-iframe-traffic/.
 
 ## Widget
 
-Deux modes, choisis par le paramètre `mode` de l'URL. En-tête commun : titre « Le point sur le trafic routier » et
-« En direct · HH:MM » sur une ligne ; sous 480 px de large, l'heure seule. Titre en 19 px gras (explore), ou traité
-en surtitre (compact : 13 px gras, capitales, rouge Blick).
+Deux modes, choisis par le paramètre `mode` de l'URL. En-tête commun : titre « Le point sur le trafic routier » traité
+en surtitre (13 px gras, capitales, rouge Blick) et « En direct · HH:MM » sur une ligne ; sous 480 px de large, l'heure
+seule.
 
 **Mode explore** (défaut, `?mode=explore`) : invitation à l'exploration, placée dans un article lié au sujet. Sans
-cadre ni marge extérieure ; l'en-tête et les crédits ont un fond `--color-fill-weak` et un petit retrait intérieur,
-pour que les bords du widget se lisent dans l'article ; la carte va d'un bord à l'autre.
+cadre ni marge extérieure ; l'en-tête a un fond `--color-fill-weak` et un petit retrait intérieur, pour que les bords
+du widget se lisent dans l'article ; la carte et les crédits vont d'un bord à l'autre (crédits en style de légende
+Blick, comme `bl-tool-timeline-r` : 12 px, graisse normale, `--color-text-weak`).
 Carte MapLibre (fond OpenFreeMap Positron + relief, comme `bl-iframe-map-ski`) : tracé de chaque point suivi
 coloré selon son état, une étiquette par point sur une ligne (pastille de couleur des listes, barrière pour un col
 fermé, puis le nom court ; ni statut ni vitesse, la liste les donne ; en mobile, pastille seule), postes de comptage
@@ -103,15 +104,15 @@ entière en mobile. Panneau unique liste ↔ fiche :
   Ni graphique, ni mesures de compteurs, ni texte brut de l'OFROU. Le tronçon touché n'est repris que sur un axe ou
   une douane : ces routes ne sont jamais fermées en entier, mais entre deux jonctions, le plus souvent la nuit.
 
-| Largeur de l'iframe | Mise en page (hauteur fixe) |
+| Largeur de l'iframe | Mise en page (hauteur) |
 |---|---|
 | ≥ 860 px (cible 964) | comme en 632 px : carte pleine largeur, panneau superposé replié par défaut, ouvert par « Liste » ou un clic sur la carte (600 px) |
 | 520–859 px (cible 632) | carte pleine largeur, panneau superposé replié par défaut, ouvert par « Liste » ou un clic sur la carte (540 px) |
-| < 520 px (mobile) | sur le modèle de `bl-iframe-map-ski` : carte (≈ 235 px, Suisse entière, pastilles sans nom) + barre dessous (menu du filtre, ouvert vers le haut, et bouton liste) ; le bouton ouvre la liste plein cadre (filtre, une ligne de 34 px par point : nom, pastille et mot du statut) ; un point choisi (liste ou carte) ouvre directement la fiche en plein cadre, même structure en tailles réduites (nom 20 px, lignes 14 px, pastilles 14 px, métriques 22 px), « Tous les points » revient à la liste, la croix à la carte (400 px) |
+| < 520 px (mobile) | sur le modèle de `bl-iframe-map-ski` : carte en 4:3 (pleine largeur, Suisse entière, pastilles sans nom) + barre dessous (menu du filtre, ouvert vers le haut, et bouton liste) ; le bouton ouvre la liste plein cadre (filtre, une ligne de 34 px par point : nom, pastille et mot du statut) ; un point choisi (liste ou carte) ouvre directement la fiche en plein cadre, même structure en tailles réduites (nom 20 px, lignes 14 px, pastilles 14 px, métriques 22 px), « Tous les points » revient à la liste, la croix à la carte (hauteur selon le contenu, ≈ 440 px à 360 px de large, ajustée par `iframeHeightAdjustment.js`) |
 
 **Mode compact** (`?mode=compact`, maquette Claude Design 4a / 4b) : haut de rubrique ou homepage, lisible d'un coup
-d'œil, sans carte ni interaction. Fondu dans l'article : ni cadre, ni arrondi, ni marge extérieure (en-tête, lignes
-et source sur fond `--color-fill-weak`, avec un petit retrait intérieur ; pied « Tout voir » sur `--color-fill-strong`, avec ses marges latérales). 6 points au plus, en deux colonnes à partir de 480 px (lecture par colonne, les plus
+d'œil, sans carte ni interaction. Fondu dans l'article : ni cadre, ni arrondi, ni marge extérieure (en-tête et lignes
+sur fond `--color-fill-weak`, avec un petit retrait intérieur ; pied « Tout voir » sur `--color-fill-strong`, avec ses marges latérales ; source franc bord, en style de légende). 6 points au plus, en deux colonnes à partir de 480 px (lecture par colonne, les plus
 graves à gauche), une colonne en dessous. Chaque ligne : pastille de couleur (19 px), nom, puis « **Statut** · détail ·
 sens », le mot du statut dans la couleur de la pastille. Exception : un col fermé (perturbation au long cours, pas un
 état du trafic qui change d'une minute à l'autre) est signalé par une barrière à la place de la pastille, dans le même rouge. Aucune vitesse ni

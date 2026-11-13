@@ -248,7 +248,7 @@ export function MapView({ crossings, sel, hover, mode, width, theme, onHover, on
   const showAll = () => instance.current?.map.fitBounds(OVERVIEW[mode].bounds, { padding: OVERVIEW[mode].padding, duration: 600 });
 
   return (
-    <div className="relative order-1 min-h-0 min-w-0 flex-1">
+    <div className={`relative order-1 min-w-0 ${mode === "mobile" ? "aspect-[4/3] w-full flex-none" : "min-h-0 flex-1"}`}>
       {/* Taille explicite : la CSS du moteur force `position: relative` sur le conteneur, un `absolute inset-0` s'effondrerait. */}
       <div ref={containerRef} className="size-full bg-map" />
       <div className="absolute top-2.5 right-2.5 z-[2] flex flex-col gap-1.5">

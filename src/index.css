@@ -41,6 +41,8 @@
   --color-panel: var(--panel-bg);
   --color-panel-hover: var(--panel-hover);
   --color-panel-line: var(--panel-line);
+  --color-panel-field: var(--panel-field);
+  --color-menu-strong-hover: var(--menu-strong-hover);
 }
 
 @layer base {
@@ -65,8 +67,21 @@
     --panel-thumb: var(--is-light-theme, var(--color-fill-strong)) var(--is-dark-theme, var(--color-grey-600));
     /* Pouce des barres de défilement ; le panneau le redéfinit (--panel-thumb). */
     --scrollbar-thumb: var(--color-fill-strong);
+    /* Champs et boutons gris du panneau (bouton liste) : ici le fond du survol. */
+    --panel-field: var(--is-light-theme, var(--color-fill-weak)) var(--is-dark-theme, var(--color-grey-700));
+    /* Option survolée du menu du filtre sur fond `fill-strong` (mobile) : un cran au-dessus. */
+    --menu-strong-hover: var(--is-light-theme, var(--color-grey-300)) var(--is-dark-theme, var(--color-grey-700));
     /* Contrôles natifs (barres de défilement…) au thème de la page. */
     color-scheme: var(--is-light-theme, light) var(--is-dark-theme, dark);
+  }
+  /* Mobile (comme bl-iframe-map-ski) : barre du filtre et liste / fiche plein cadre sur `fill-weak`, pour les détacher
+     des crédits en dessous ; survol et ligne choisie sur `fill-strong` ; bouton liste sur `fill-default`,
+     qui ressort du gris. */
+  .panel-mobile {
+    --panel-bg: var(--color-fill-weak);
+    --panel-hover: var(--color-fill-strong);
+    --panel-line: var(--color-stroke-weak);
+    --panel-field: var(--color-fill-default);
   }
   /*
    * Barres de défilement fines et discrètes (liste, fiche, menu) : pouce `--scrollbar-thumb`, sans rail ni flèches.

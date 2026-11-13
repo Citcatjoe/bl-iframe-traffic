@@ -140,7 +140,7 @@ export default function App() {
       >
         <Header narrow={narrow} status={status} time={d?.fetched_at} />
         {staleBanner}
-        <div className={`relative flex min-h-0 flex-1 ${mobile ? "flex-col" : "flex-row"}`}>
+        <div className={`relative flex ${mobile ? "flex-col" : "min-h-0 flex-1 flex-row"}`}>
           <SidePanel
             mode={mode}
             panelOpen={panelOpen}

@@ -14,8 +14,10 @@ function Mark({ f }) {
  * Tête de la liste (mode explore) : menu déroulant à choix unique, à la taille de son contenu.
  * Chaque option indique le nombre de points concernés. `action` : bouton à droite (fermer, ouvrir la liste).
  * `dropUp` : barre en bas du widget (mobile, sous la carte) : le menu s'ouvre vers le haut, sans filet bas.
+ * `mobile` : menu sur fond `fill-strong` (barre et panneau y sont en `fill-weak`) ; sinon menu sur le fond de page.
+ * Le déclencheur reste transparent partout (pas un champ : un menu).
  */
-export function FilterBar({ crossings, value, onChange, action = null, dropUp = false }) {
+export function FilterBar({ crossings, value, onChange, action = null, dropUp = false, mobile = false }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -76,7 +78,7 @@ export function FilterBar({ crossings, value, onChange, action = null, dropUp = 
           role="menu"
           aria-label="Filtrer les points"
           onKeyDown={onKey}
-          className={`absolute ${dropUp ? "bottom-[46px]" : "top-[46px]"} left-1.5 z-10 flex w-max flex-col rounded-lg bg-surface py-1.5 shadow-menu`}
+          className={`absolute ${dropUp ? "bottom-[46px]" : "top-[46px]"} ${mobile ? "bg-surface-strong" : "bg-surface"} left-1.5 z-10 flex w-max flex-col rounded-lg py-1.5 shadow-menu`}
         >
           {options.map((o) => {
             const on = o.id === current.id;
@@ -88,7 +90,7 @@ export function FilterBar({ crossings, value, onChange, action = null, dropUp = 
                 aria-checked={on}
                 tabIndex={-1}
                 onClick={() => pick(o.id)}
-                className="grid h-9 cursor-pointer grid-cols-[12px_auto_1fr_12px] items-center gap-2 border-none bg-transparent px-3 text-left font-body text-sm text-ink hover:bg-surface-weak focus-visible:bg-surface-weak focus-visible:outline-none"
+                className={`grid h-9 cursor-pointer grid-cols-[12px_auto_1fr_12px] items-center gap-2 border-none bg-transparent px-3 text-left font-body text-sm text-ink focus-visible:outline-none ${mobile ? "hover:bg-menu-strong-hover focus-visible:bg-menu-strong-hover" : "hover:bg-surface-weak focus-visible:bg-surface-weak"}`}
               >
                 <Mark f={o} />
                 <span className={on ? "font-bold" : ""}>{o.label}</span>

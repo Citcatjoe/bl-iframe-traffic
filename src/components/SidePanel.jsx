@@ -10,9 +10,11 @@ function panelClass(mode, panelOpen) {
   if (mode !== "mobile") {
     return `${BASE} overflow-hidden absolute top-3 bottom-3 left-3 w-[300px] rounded-lg shadow-menu transition-transform duration-[220ms] ease-in-out ${panelOpen ? "translate-x-0" : "-translate-x-[calc(100%+24px)]"}`;
   }
-  if (panelOpen) return `${BASE} overflow-hidden absolute inset-0 z-[6]`;
+  // Mobile : fond `fill-weak`, bouton liste blanc (classe panel-mobile, index.css), pour détacher la barre et la liste
+  // des crédits.
+  if (panelOpen) return `${BASE} panel-mobile overflow-hidden absolute inset-0 z-[6]`;
   // Barre réduite : pas d'overflow-hidden, le menu du filtre s'ouvre vers le haut, par-dessus la carte.
-  return `${BASE} relative order-2 flex-none border-t border-panel-line`;
+  return `${BASE} panel-mobile relative order-2 flex-none border-t border-panel-line`;
 }
 
 /**
@@ -30,7 +32,7 @@ export function SidePanel({ mode, panelOpen, crossings, updatedAt, list, filter,
   // et la vue d'ensemble recalculée pendant que le panneau est ouvert reste juste à sa fermeture.
   const bar = mobile && (
     <aside className={panelClass(mode, false)} inert={panelOpen} aria-hidden={panelOpen || undefined} aria-label="Points suivis">
-      {filterBar({ dropUp: true, action: <IconButton icon="fa-solid fa-list" color="grey" label="Voir tous les points" onClick={onOpen} /> })}
+      {filterBar({ dropUp: true, mobile: true, action: <IconButton icon="fa-solid fa-list" color="grey" label="Voir tous les points" onClick={onOpen} /> })}
     </aside>
   );
   if (mobile && !panelOpen) return bar;
@@ -47,7 +49,7 @@ export function SidePanel({ mode, panelOpen, crossings, updatedAt, list, filter,
           >
             {/* Page liste */}
             <div className="flex h-full min-h-0 w-1/2 flex-col" inert={focused}>
-              {filterBar({ action: <IconButton icon="fa-solid fa-xmark" label="Fermer la liste" onClick={onClose} /> })}
+              {filterBar({ mobile, action: <IconButton icon="fa-solid fa-xmark" label="Fermer la liste" onClick={onClose} /> })}
               <CrossingList
                 crossings={list}
                 empty={filter ? "Aucun point ne correspond à ce filtre en ce moment." : "Pas encore de données."}
